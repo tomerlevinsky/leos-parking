@@ -1,0 +1,264 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>חניון אורחים · ניהול</title>
+<meta name="robots" content="noindex">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Secular+One&family=IBM+Plex+Sans+Hebrew:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="common.css">
+</head>
+<body>
+<div class="app" id="root"><p class="note">טוען…</p></div>
+
+<template id="tpl">
+  <header class="top">
+    <div class="brand">
+      <div class="mark" aria-hidden="true">P</div>
+      <div><span class="eyebrow">לאוס מדיה · ניהול</span><h1>חניון אורחים</h1><p class="sub">שליטה מלאה בשתי החניות</p></div>
+    </div>
+    <div class="who"><b id="meName"></b><button type="button" class="ghost" id="logout">התנתקות</button></div>
+  </header>
+
+  <div class="banner" id="conflicts" hidden></div>
+  <section class="stat" id="stats"></section>
+
+  <nav class="tabs" role="tablist">
+    <button role="tab" data-tab="board" aria-selected="true">לוח</button>
+    <button role="tab" data-tab="closures" aria-selected="false">חסימות</button>
+    <button role="tab" data-tab="staff" aria-selected="false">עובדים</button>
+    <button role="tab" data-tab="settings" aria-selected="false">הגדרות</button>
+  </nav>
+
+  <!-- Board -->
+  <div class="stack" data-pane="board">
+    <section class="now" id="now"></section>
+    <nav class="days" id="days" aria-label="בחירת יום"></nav>
+    <section class="board">
+      <div class="bhead"><div></div><div>חניה 1</div><div>חניה 2</div></div>
+      <div class="bbody" id="board"></div>
+      <p class="legend"><span><i style="background:var(--accent-soft);border-color:var(--accent)"></i>לקוח</span><span><i style="background:var(--rent-soft);border-color:var(--rent)"></i>שכן</span><span><i style="background:var(--closed-soft);border-color:var(--line)"></i>סגור</span><span>מקווקו = ממתין לתשלום</span></p>
+    </section>
+    <section class="panel">
+      <div class="panel-head"><h2 id="dayTitle"></h2><button type="button" class="ghost" id="closeThisDay">סגירת היום הזה</button></div>
+      <div class="list" id="dayList"></div>
+      <a class="note" href="staff.html">שמירת חניה ללקוח ←</a>
+    </section>
+  </div>
+
+  <!-- Closures -->
+  <div class="stack" data-pane="closures" hidden>
+    <section class="panel">
+      <h2>חסימת חניה</h2>
+      <form id="clForm" class="stack" novalidate>
+        <div class="grid2">
+          <div class="field"><label for="clDay">תאריך</label><input id="clDay" type="date" class="num"></div>
+          <div class="field"><label for="clSpot">חניה</label><select id="clSpot"><option value="0">שתי החניות</option><option value="1">חניה 1</option><option value="2">חניה 2</option></select></div>
+        </div>
+        <label class="switch"><span>כל היום</span><input type="checkbox" id="clAll" checked></label>
+        <div class="grid2" id="clTimes" hidden>
+          <div class="field"><label for="clFrom">משעה</label><select id="clFrom" class="num"></select></div>
+          <div class="field"><label for="clTo">עד שעה</label><select id="clTo" class="num"></select></div>
+        </div>
+        <div class="field"><label for="clReason">סיבה (רק אתה והעובדים רואים)</label><input id="clReason" placeholder="למשל: אירוע במשרד, חג, עבודות בחניון"></div>
+        <p class="note" id="clWarn"></p>
+        <button class="primary" type="submit">חסימה</button>
+      </form>
+    </section>
+    <section class="panel">
+      <div class="panel-head"><h2>חסימות קרובות</h2><p>60 הימים הבאים</p></div>
+      <div class="list" id="clList"></div>
+    </section>
+  </div>
+
+  <!-- Staff -->
+  <div class="stack" data-pane="staff" hidden>
+    <section class="panel">
+      <h2>הוספת עובד</h2>
+      <form id="stForm" class="stack" novalidate>
+        <div class="grid2">
+          <div class="field"><label for="stEmail">מייל</label><input id="stEmail" class="ltr" type="email" inputmode="email" placeholder="name@leos.co.il"></div>
+          <div class="field"><label for="stName">שם</label><input id="stName"></div>
+        </div>
+        <div class="field"><label for="stRole">הרשאה</label><select id="stRole"><option value="staff">עובד – שומר חניות ללקוחות</option><option value="admin">מנהל – שליטה מלאה</option></select></div>
+        <button class="primary" type="submit">הוספה</button>
+        <p class="note">העובד נכנס לקישור של העובדים עם המייל הזה ומקבל קישור כניסה. אין סיסמאות.</p>
+      </form>
+    </section>
+    <section class="panel"><h2>עם גישה</h2><div class="list" id="stList"></div></section>
+  </div>
+
+  <!-- Settings -->
+  <div class="stack" data-pane="settings" hidden>
+    <section class="panel">
+      <h2>מחירים ושעות</h2>
+      <form id="cfForm" class="stack" novalidate>
+        <label class="switch"><span>השכרה לשכנים פתוחה</span><input type="checkbox" id="cfOn"></label>
+        <div class="grid2">
+          <div class="field"><label for="cfHourly">מחיר לשעה (₪)</label><input id="cfHourly" type="number" min="1" class="num"></div>
+          <div class="field"><label for="cfCap">תקרה ליום (₪)</label><input id="cfCap" type="number" min="1" class="num"></div>
+          <div class="field"><label for="cfOpen">פתיחה</label><select id="cfOpen" class="num"></select></div>
+          <div class="field"><label for="cfClose">סגירה</label><select id="cfClose" class="num"></select></div>
+          <div class="field"><label for="cfMin">מינימום ללקוח</label><select id="cfMin" class="num"></select></div>
+          <div class="field"><label for="cfAhead">שכנים מזמינים עד</label><select id="cfAhead"></select></div>
+        </div>
+        <div class="field"><label for="cfHold">כמה זמן שומרים חניה עד שהשכן משלם</label><select id="cfHold"><option value="10">10 דקות</option><option value="15">15 דקות</option><option value="20">20 דקות</option><option value="30">30 דקות</option></select></div>
+        <button class="primary" type="submit">שמירה</button>
+      </form>
+    </section>
+  </div>
+</template>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<script src="config.js"></script>
+<script src="common.js"></script>
+<script>
+const { hm, esc, plateHTML, toast, err, rpc, israelNow, addDays, dateLabel, fmtPhone } = PK;
+const $ = (id) => document.getElementById(id);
+let cfg, me, bookings = [], closures = [], selDate = israelNow().day, armed = null, staffNames = {};
+const DAYS = 60;
+const bookerName = (email) => staffNames[email] || String(email).split("@")[0];
+
+async function load() {
+  const today = israelNow().day, monthStart = today.slice(0, 8) + "01";
+  const [d, rep] = await Promise.all([
+    rpc("parking_staff_board", { p_from: today, p_days: DAYS }),
+    rpc("parking_admin_report", { p_from: monthStart, p_to: addDays(today, 0) }),
+  ]);
+  cfg = d.config; bookings = d.bookings || []; closures = d.closures || []; staffNames = d.staff || {};
+  $("stats").innerHTML = `<div><b class="num">₪${rep.paid_total}</b><span>הכנסות החודש (${rep.paid_count} השכרות)</span></div>
+    <div><b class="num">₪${rep.pending_total}</b><span>ממתין לתשלום עכשיו</span></div>
+    <div><b class="num">${rep.client_count}</b><span>חניות ללקוחות החודש</span></div>`;
+  $("conflicts").hidden = !rep.conflicts;
+  $("conflicts").textContent = rep.conflicts ? `${rep.conflicts} שכנים שילמו אחרי שהחניה נתפסה. צריך להחזיר להם כסף או למצוא להם זמן אחר. הם מסומנים בלוח.` : "";
+  render(); renderClosures(); fillCfg();
+}
+function blocksAll() {
+  return bookings.map((b) => ({ ...b, cls: b.kind + (b.status === "pending" ? " pending" : "") }))
+    .concat(closures.map((c) => ({ ...c, kind: "closed", cls: "closed" })));
+}
+function render() {
+  const today = israelNow().day, all = blocksAll();
+  const closedDays = new Set(closures.filter((c) => c.spot == null && c.start <= cfg.open_min && c.end >= cfg.close_min).map((c) => c.day));
+  PK.renderDays($("days"), { from: today, n: 21, sel: selDate, closedDays, onPick: (d) => { selDate = d; armed = null; render(); } });
+  PK.renderNow($("now"), { cfg, blocks: all, label: (b) => b.kind === "closed" ? '<span class="pill p-closed">סגור</span>' : b.kind === "client" ? '<span class="pill p-client">לקוח</span>' : '<span class="pill p-rent">שכן</span>' });
+  PK.renderBoard($("board"), { cfg, day: selDate, blocks: all.filter((b) => b.day === selDate).map((b) => ({
+    ...b,
+    title: b.kind === "closed" ? "סגור" + (b.reason ? " · " + esc(b.reason) : "") : b.kind === "client" ? "לקוח · " + esc(b.client) : "שכן · " + esc(b.driver),
+    sub: b.status === "pending" ? "ממתין לתשלום" : b.status === "paid_conflict" ? "התנגשות" : b.kind === "client" ? "ע״י " + esc(bookerName(b.by)) : "",
+    extra: b.plate ? plateHTML(b.plate) : "",
+  })) });
+  $("dayTitle").textContent = dateLabel(selDate, true);
+  const list = bookings.filter((b) => b.day === selDate);
+  const cl = closures.filter((c) => c.day === selDate);
+  $("dayList").innerHTML = (cl.map((c) => `<div class="row"><div class="t">${c.start === 0 && c.end === 1440 ? "כל היום" : hm(c.start) + "–" + hm(c.end)}<small>${c.spot ? "חניה " + c.spot : "שתי החניות"}</small></div><div class="m"><span>סגור${c.reason ? " · " + esc(c.reason) : ""}</span></div><div class="acts"><button class="ghost" data-delcl="${c.id}">פתיחה</button></div></div>`).join("")
+    + list.map(row).join("")) || '<p class="empty">אין הזמנות ביום הזה.</p>';
+}
+function row(b) {
+  const who = b.kind === "client" ? `לקוח: ${esc(b.client)}<br><span class="sm">שמר/ה: <b>${esc(bookerName(b.by))}</b> · <span style="direction:ltr;display:inline-block">${esc(b.by)}</span></span>` : `שכן: ${esc(b.driver)}`;
+  const pill = b.kind === "client" ? '<span class="pill p-client">לקוח</span>'
+    : b.status === "pending" ? `<span class="pill p-warn">ממתין ₪${b.price}</span>`
+    : b.status === "paid_conflict" ? `<span class="pill p-warn">שולם ₪${b.price} · התנגשות</span>`
+    : `<span class="pill p-free">שולם ₪${b.price}</span>`;
+  const phone = b.phone ? `<div class="phone"><code>${esc(fmtPhone(b.phone))}</code><a href="tel:${esc(b.phone)}">חיוג</a><a href="https://wa.me/972${esc(b.phone.slice(1))}" target="_blank" rel="noopener">וואטסאפ</a></div>` : "";
+  let acts = "";
+  if (b.kind === "rental" && (b.status === "pending" || b.status === "paid_conflict")) acts += `<button class="ghost" data-paid="${b.id}">סימון כשולם</button>`;
+  acts += armed === b.id ? `<button class="ghost danger" data-yes="${b.id}">כן, לבטל</button>` : `<button class="ghost" data-cancel="${b.id}">ביטול</button>`;
+  return `<div class="row"><div class="t">${hm(b.start)}–${hm(b.end)}<small>חניה ${b.spot}</small></div>
+    <div class="m"><span>${who}</span><div class="line">${plateHTML(b.plate)}${pill}</div>${phone}</div><div class="acts">${acts}</div></div>`;
+}
+
+function timeOpts(sel, from, to, step) { let h = ""; for (let m = from; m <= to; m += step) h += `<option value="${m}">${hm(m)}</option>`; sel.innerHTML = h; }
+function renderClosures() {
+  const up = closures.slice().sort((a, b) => a.day.localeCompare(b.day) || a.start - b.start);
+  $("clList").innerHTML = up.length ? up.map((c) => `<div class="row"><div class="t">${esc(dateLabel(c.day))}<small>${c.start === 0 && c.end === 1440 ? "כל היום" : hm(c.start) + "–" + hm(c.end)}</small></div>
+    <div class="m"><span>${c.spot ? "חניה " + c.spot : "שתי החניות"}${c.reason ? " · " + esc(c.reason) : ""}</span></div><div class="acts"><button class="ghost" data-delcl="${c.id}">הסרה</button></div></div>`).join("")
+    : '<p class="empty">אין חסימות. החניות פתוחות לפי שעות הפעילות.</p>';
+  clWarn();
+}
+function clWarn() {
+  const d = $("clDay").value; if (!d) { $("clWarn").textContent = ""; return; }
+  const sp = Number($("clSpot").value), all = $("clAll").checked, s = all ? 0 : Number($("clFrom").value), e = all ? 1440 : Number($("clTo").value);
+  const hit = bookings.filter((b) => b.day === d && (!sp || b.spot === sp) && b.start < e && s < b.end);
+  $("clWarn").textContent = hit.length ? `שימו לב: יש ${hit.length} הזמנות בזמן הזה. החסימה לא מבטלת אותן. אפשר לבטל אותן בלשונית "לוח".` : "";
+}
+function fillCfg() {
+  if (document.activeElement && document.activeElement.closest && document.activeElement.closest("#cfForm")) return;
+  $("cfOn").checked = cfg.rentals_enabled; $("cfHourly").value = cfg.hourly; $("cfCap").value = cfg.day_cap;
+  $("cfOpen").value = cfg.open_min; $("cfClose").value = cfg.close_min; $("cfMin").value = cfg.client_min_minutes;
+  $("cfAhead").value = cfg.rental_days_ahead; $("cfHold").value = cfg.hold_minutes;
+}
+async function loadStaff() {
+  const list = await rpc("parking_admin_staff");
+  $("stList").innerHTML = list.map((s) => `<div class="row"><div class="t">${s.role === "admin" ? "מנהל" : "עובד"}</div>
+    <div class="m"><span>${esc(s.name || "—")}</span><span class="sm" style="direction:ltr;text-align:right">${esc(s.email)}</span></div>
+    <div class="acts">${s.email === me.email ? "" : armed === "st:" + s.email ? `<button class="ghost danger" data-stdel="${esc(s.email)}">כן, להסיר</button>` : `<button class="ghost" data-starm="${esc(s.email)}">הסרה</button>`}</div></div>`).join("");
+}
+
+function wire() {
+  $("logout").onclick = PK.logout;
+  document.querySelector(".tabs").onclick = (e) => {
+    const b = e.target.closest("[data-tab]"); if (!b) return;
+    document.querySelectorAll(".tabs button").forEach((x) => x.setAttribute("aria-selected", x === b));
+    document.querySelectorAll("[data-pane]").forEach((p) => (p.hidden = p.dataset.pane !== b.dataset.tab));
+    if (b.dataset.tab === "staff") loadStaff().catch((x) => toast(err(x)));
+  };
+  timeOpts($("clFrom"), 0, 1410, 30); timeOpts($("clTo"), 30, 1440, 30); $("clTo").value = "1440";
+  timeOpts($("cfOpen"), 0, 1410, 30); timeOpts($("cfClose"), 30, 1440, 30);
+  $("cfMin").innerHTML = [30, 60, 90, 120, 150, 180, 240].map((m) => `<option value="${m}">${PK.fmtDur(m)}</option>`).join("");
+  $("cfAhead").innerHTML = [[0, "אותו יום בלבד"], [1, "יום אחד מראש"], [2, "יומיים מראש"], [3, "3 ימים מראש"], [7, "שבוע מראש"]].map(([v, t]) => `<option value="${v}">${t}</option>`).join("");
+  $("clDay").value = israelNow().day; $("clDay").min = israelNow().day;
+  $("clAll").onchange = () => { $("clTimes").hidden = $("clAll").checked; clWarn(); };
+  ["clDay", "clSpot", "clFrom", "clTo"].forEach((id) => $(id).addEventListener("change", clWarn));
+  $("closeThisDay").onclick = () => {
+    $("clDay").value = selDate; $("clAll").checked = true; $("clTimes").hidden = true; clWarn();
+    document.querySelector('[data-tab="closures"]').click();
+  };
+
+  $("clForm").onsubmit = async (e) => {
+    e.preventDefault();
+    const all = $("clAll").checked, s = all ? 0 : Number($("clFrom").value), en = all ? 1440 : Number($("clTo").value);
+    if (!$("clDay").value) return toast("בחרו תאריך");
+    if (en <= s) return toast("שעת הסיום צריכה להיות אחרי שעת ההתחלה");
+    try { await rpc("parking_admin_add_closure", { p_day: $("clDay").value, p_spot: Number($("clSpot").value) || null, p_start: s, p_end: en, p_reason: $("clReason").value });
+      toast("החסימה נשמרה"); $("clReason").value = ""; await load(); } catch (x) { toast(err(x)); }
+  };
+  $("stForm").onsubmit = async (e) => {
+    e.preventDefault();
+    try { await rpc("parking_admin_staff_upsert", { p_email: $("stEmail").value, p_name: $("stName").value, p_role: $("stRole").value });
+      toast("נוסף לרשימה"); $("stEmail").value = ""; $("stName").value = ""; await loadStaff(); } catch (x) { toast(err(x)); }
+  };
+  $("cfForm").onsubmit = async (e) => {
+    e.preventDefault();
+    const v = { rentals_enabled: $("cfOn").checked, hourly: Number($("cfHourly").value), day_cap: Number($("cfCap").value), open_min: Number($("cfOpen").value),
+      close_min: Number($("cfClose").value), client_min_minutes: Number($("cfMin").value), rental_days_ahead: Number($("cfAhead").value), hold_minutes: Number($("cfHold").value) };
+    if (!(v.hourly > 0 && v.day_cap > 0)) return toast("המחירים צריכים להיות גדולים מאפס");
+    if (v.close_min <= v.open_min) return toast("שעת הסגירה צריכה להיות אחרי שעת הפתיחה");
+    try { document.activeElement.blur(); await rpc("parking_admin_set_config", { p: v }); toast("ההגדרות נשמרו"); await load(); } catch (x) { toast(err(x)); }
+  };
+  document.addEventListener("click", async (e) => {
+    const t = e.target.closest("button"); if (!t) return;
+    const d = t.dataset;
+    if (d.cancel) { armed = d.cancel; render(); return; }
+    if (d.starm) { armed = "st:" + d.starm; loadStaff(); return; }
+    try {
+      if (d.yes) { await rpc("parking_cancel", { p_id: d.yes }); armed = null; toast("ההזמנה בוטלה"); await load(); }
+      if (d.paid) { await rpc("parking_admin_mark_paid", { p_id: d.paid }); toast("סומן כשולם"); await load(); }
+      if (d.delcl) { await rpc("parking_admin_delete_closure", { p_id: d.delcl }); toast("החסימה הוסרה"); await load(); }
+      if (d.stdel) { await rpc("parking_admin_staff_delete", { p_email: d.stdel }); armed = null; toast("הוסר מהרשימה"); await loadStaff(); }
+    } catch (x) { toast(err(x)); }
+  });
+}
+
+PK.authGate($("root"), { need: "admin", onReady: async (m) => {
+  me = m;
+  $("root").innerHTML = ""; $("root").appendChild($("tpl").content.cloneNode(true));
+  $("meName").textContent = m.name || m.email;
+  wire();
+  try { await load(); } catch (x) { toast(err(x)); }
+  setInterval(() => load().catch(() => {}), 60000);
+}});
+</script>
+</body>
+</html>

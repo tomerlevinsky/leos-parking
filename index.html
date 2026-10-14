@@ -1,0 +1,217 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>חניון אורחים · לאוס מדיה</title>
+<meta name="description" content="השכרת חניה לפי שעה לדיירי הבניין">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Secular+One&family=IBM+Plex+Sans+Hebrew:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="common.css">
+</head>
+<body>
+<div class="app">
+  <header class="top">
+    <div class="brand">
+      <div class="mark" aria-hidden="true">P</div>
+      <div><span class="eyebrow">לאוס מדיה ואינטראקטיב</span><h1>חניון אורחים</h1><p class="sub">חניה לפי שעה לדיירי הבניין</p></div>
+    </div>
+    <div class="price-tag num" id="priceTag"></div>
+  </header>
+
+  <div class="banner" id="banner" hidden></div>
+  <section class="panel" id="status" hidden></section>
+
+  <section class="now" id="now" aria-label="מצב החניות עכשיו">
+    <div class="spot"><span class="lbl">חניה 1 · עכשיו</span><span class="pill p-closed">טוען…</span></div>
+    <div class="spot"><span class="lbl">חניה 2 · עכשיו</span><span class="pill p-closed">טוען…</span></div>
+  </section>
+
+  <nav class="days" id="days" aria-label="בחירת יום"></nav>
+
+  <section class="board" aria-label="זמינות החניות">
+    <div class="bhead"><div></div><div>חניה 1</div><div>חניה 2</div></div>
+    <div class="bbody" id="board"></div>
+    <p class="legend"><span><i style="background:var(--rent-soft);border-color:var(--rent)"></i>תפוס</span><span><i style="background:var(--closed-soft);border-color:var(--line)"></i>סגור</span><span>לחיצה על זמן פנוי פותחת הזמנה</span></p>
+  </section>
+
+  <section class="panel" id="bookPanel">
+    <div class="panel-head"><h2>הזמנת חניה</h2><p id="bookDate"></p></div>
+    <form id="form" class="stack" novalidate>
+      <div class="step" data-n="1">מתי</div>
+      <div class="grid2">
+        <div class="field"><label for="fSpot">חניה</label>
+          <select id="fSpot"><option value="0">הראשונה שפנויה</option><option value="1">חניה 1</option><option value="2">חניה 2</option></select></div>
+        <div class="field"><label for="fStart">משעה</label><select id="fStart" class="num"></select></div>
+      </div>
+      <div class="field"><label for="fDur">משך</label><select id="fDur" class="num"></select><span class="hint" id="durHint"></span></div>
+      <div class="quick"><button type="button" class="chip" id="fullDay"></button></div>
+      <div class="step" data-n="2">פרטי הרכב</div>
+      <div class="field"><label for="fPlate">מספר רכב</label><div class="plate-field"><input id="fPlate" inputmode="numeric" autocomplete="off" placeholder="123-45-678"></div></div>
+      <div class="grid2">
+        <div class="field"><label for="fName">שם מלא</label><input id="fName" autocomplete="name"></div>
+        <div class="field"><label for="fPhone">טלפון</label><input id="fPhone" class="ltr num" type="tel" inputmode="tel" autocomplete="tel" placeholder="050-0000000">
+          <span class="hint">נתקשר אם הרכב צריך לזוז</span></div>
+      </div>
+      <div class="step" data-n="3">תשלום</div>
+      <p class="note" id="holdNote"></p>
+      <div class="paybar">
+        <div class="summary"><div class="what" id="sumWhat"></div><div class="amt num" id="sumAmt"></div></div>
+        <p class="err" id="err" hidden></p>
+        <button class="primary" id="submit" type="submit">המשך לתשלום</button>
+      </div>
+    </form>
+  </section>
+
+  <p class="note" id="footer"></p>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<script src="config.js"></script>
+<script src="common.js"></script>
+<script>
+const { hm, esc, plateHTML, toast, err, rpc, fn, israelNow, addDays, dayDiff, dateLabel } = PK;
+const $ = (id) => document.getElementById(id);
+const KEY = "pk_booking";
+let cfg = null, blocks = [], selDate = israelNow().day;
+
+const store = {
+  get() { try { return JSON.parse(localStorage.getItem(KEY) || "null"); } catch { return null; } },
+  set(v) { try { localStorage.setItem(KEY, JSON.stringify(v)); } catch {} },
+  clear() { try { localStorage.removeItem(KEY); } catch {} },
+};
+const price = (s, e) => Math.min(Math.ceil((e - s) / 60) * cfg.hourly, cfg.day_cap);
+
+async function load() {
+  const today = israelNow().day;
+  const data = await rpc("parking_public_board", { p_from: today, p_days: 8 });
+  cfg = data.config; blocks = data.blocks || [];
+  const lastDay = addDays(today, cfg.rental_days_ahead);
+  if (selDate < today || selDate > lastDay) selDate = today;
+  $("priceTag").innerHTML = `<b>₪${cfg.hourly}</b><span>לשעה · עד ₪${cfg.day_cap} ליום</span>`;
+  $("holdNote").textContent = `החניה נשמרת לך ${cfg.hold_minutes} דקות עד שהתשלום מסתיים. התשלום מאובטח דרך Hyp (יעד שריג).`;
+  if (!cfg.rentals_enabled) { $("banner").textContent = "ההשכרה סגורה כרגע. אפשר לראות את הזמינות, אבל לא להזמין."; $("banner").hidden = false; }
+  render();
+}
+
+function render() {
+  const today = israelNow().day;
+  const closedDays = new Set(blocks.filter((b) => b.kind === "closed" && b.spot == null && b.start <= cfg.open_min && b.end >= cfg.close_min).map((b) => b.day));
+  PK.renderDays($("days"), { from: today, n: cfg.rental_days_ahead + 1, sel: selDate, closedDays, onPick: (d) => { selDate = d; render(); } });
+  PK.renderNow($("now"), { cfg, blocks, label: (b) => b.kind === "closed" ? '<span class="pill p-closed">סגור</span>' : '<span class="pill p-rent">תפוס</span>' });
+  const dayBlocks = blocks.filter((b) => b.day === selDate).map((b) => ({ ...b, cls: b.kind, title: b.kind === "closed" ? "סגור" : "תפוס" }));
+  PK.renderBoard($("board"), { cfg, day: selDate, blocks: dayBlocks, onEmpty: (spot, min) => {
+    $("fSpot").value = String(spot); PK.fillStart($("fStart"), { cfg, day: selDate, minLen: 60, pref: min }); fillDur(); update();
+    $("bookPanel").scrollIntoView({ behavior: "smooth", block: "start" });
+  }});
+  PK.fillStart($("fStart"), { cfg, day: selDate, minLen: 60 }); fillDur(); update();
+}
+function fillDur() {
+  PK.fillDur($("fDur"), { cfg, start: Number($("fStart").value), minLen: 60, step: 60 });
+  $("durHint").textContent = `₪${cfg.hourly} לכל שעה שמתחילה, ולא יותר מ־₪${cfg.day_cap} ליום`;
+  $("fullDay").textContent = `עד סוף היום · ₪${cfg.day_cap} לכל היותר`;
+}
+function pickSpot(s, e) {
+  const want = Number($("fSpot").value); const order = want ? [want] : [1, 2];
+  return order.find((sp) => PK.isFree(blocks, selDate, sp, s, e)) || null;
+}
+function update() {
+  $("bookDate").textContent = dateLabel(selDate, true);
+  const s = Number($("fStart").value), d = Number($("fDur").value);
+  $("err").hidden = true;
+  if (!d) { $("sumWhat").textContent = "אין זמן פנוי להזמנה ביום הזה"; $("sumAmt").textContent = ""; $("submit").disabled = true; return; }
+  const e = s + d, sp = pickSpot(s, e), amt = price(s, e);
+  $("sumWhat").textContent = `${sp ? "חניה " + sp : "אין חניה פנויה"} · ${hm(s)}–${hm(e)}`;
+  $("sumAmt").textContent = "₪" + amt;
+  $("submit").textContent = `המשך לתשלום ₪${amt}`;
+  if (!sp) { $("err").textContent = Number($("fSpot").value) ? "החניה הזאת תפוסה בחלק מהזמן. נסו את החניה השנייה או שעה אחרת." : "שתי החניות תפוסות בחלק מהזמן הזה. נסו שעה אחרת."; $("err").hidden = false; }
+  $("submit").disabled = !sp || !cfg.rentals_enabled;
+}
+$("fStart").addEventListener("change", () => { fillDur(); update(); });
+$("fDur").addEventListener("change", update);
+$("fSpot").addEventListener("change", update);
+$("fullDay").addEventListener("click", () => { const o = $("fDur").options; if (o.length) { $("fDur").value = o[o.length - 1].value; update(); } });
+$("fPlate").addEventListener("blur", () => { $("fPlate").value = PK.fmtPlate($("fPlate").value); });
+
+$("form").addEventListener("submit", async (ev) => {
+  ev.preventDefault();
+  const fail = (t) => { $("err").textContent = t; $("err").hidden = false; };
+  const plate = $("fPlate").value.replace(/\D/g, ""), name = $("fName").value.trim(), phone = $("fPhone").value.replace(/[^\d+]/g, "").replace(/^\+972/, "0");
+  if (plate.length < 7 || plate.length > 8) return fail("מספר הרכב צריך להיות 7 או 8 ספרות.");
+  if (name.length < 2) return fail("חסר שם מלא.");
+  if (!/^0\d{8,9}$/.test(phone)) return fail("צריך מספר טלפון תקין, כדי שנוכל להתקשר אם הרכב צריך לזוז.");
+  const btn = $("submit"); btn.disabled = true; btn.textContent = "שומר את החניה…";
+  try {
+    const s = Number($("fStart").value), e = s + Number($("fDur").value);
+    const r = await rpc("parking_create_rental", { p_day: selDate, p_spot: Number($("fSpot").value) || null, p_start: s, p_end: e, p_plate: plate, p_name: name, p_phone: phone });
+    store.set({ id: r.id, token: r.token });
+    btn.textContent = "פותח את עמוד התשלום…";
+    await goPay(r.id, r.token);
+  } catch (x) { fail(err(x)); await load().catch(() => {}); }
+  finally { btn.disabled = false; update(); }
+});
+
+async function goPay(id, token) {
+  const r = await fn("parking-pay", { id, token });
+  if (r.demo) { // preview only: simulate a successful Hyp payment without leaving the page
+    toast("תצוגה מקדימה: מדמה תשלום מוצלח");
+    showResult(await fn("parking-verify", { id }));
+    await load(); window.scrollTo({ top: 0, behavior: "smooth" });
+    return;
+  }
+  if (!r.url) throw r;
+  location.href = r.url;
+}
+async function showResult(r) {
+  if (r.status === "paid" || r.status === "paid_conflict") {
+    store.set({ id: r.id, token: r.token });
+    const b = await rpc("parking_rental_status", { p_id: r.id, p_token: r.token });
+    if (r.status === "paid") card("ok-card", `<h2>החניה שלך מאושרת</h2>${bookingLine(b)}<p class="note">שילמת ₪${b.price}. אפשר לשמור את העמוד הזה. אם תצטרכו לזוז, נתקשר אליך.</p>`);
+    else card("warn-card", `<h2>התשלום התקבל, אבל החניה נתפסה בינתיים</h2><p style="margin:0">נחזור אליך היום כדי להחזיר את הכסף או למצוא זמן אחר.</p>`);
+  } else card("warn-card", `<h2>לא הצלחנו לאמת את התשלום</h2><p style="margin:0">אם חויבת, פנו למשרד ונסדר את זה מיד.</p>`);
+}
+
+// --- returning from Hyp, or a booking left from an earlier visit ---
+function card(cls, html) { const el = $("status"); el.className = "panel " + cls; el.innerHTML = html; el.hidden = false; }
+function bookingLine(b) {
+  return `<p style="margin:0">חניה ${b.spot} · ${esc(dateLabel(b.day, true))} · <span class="num">${hm(b.start)}–${hm(b.end)}</span> ${plateHTML(b.plate)}</p>`;
+}
+async function handleReturn() {
+  const q = new URLSearchParams(location.search);
+  if (!q.has("CCode")) return false;
+  const raw = location.search.slice(1);
+  history.replaceState(null, "", location.pathname);
+  if (q.get("CCode") !== "0") {
+    card("warn-card", `<h2>התשלום לא עבר</h2><p class="note">החניה עדיין שמורה לך לכמה דקות. אפשר לנסות שוב.</p><button class="primary" id="retry">ניסיון תשלום נוסף</button>`);
+    $("retry").onclick = async () => { const s = store.get(); if (!s) return; try { await goPay(s.id, s.token); } catch (x) { toast(err(x)); } };
+    return true;
+  }
+  card("", `<h2>מאמת את התשלום…</h2>`);
+  try {
+    await showResult(await fn("parking-verify", { query: raw }));
+  } catch (x) { card("warn-card", `<h2>לא הצלחנו לאמת את התשלום</h2><p style="margin:0">${esc(err(x))}</p>`); }
+  return true;
+}
+async function showSaved() {
+  const s = store.get(); if (!s) return;
+  let b; try { b = await rpc("parking_rental_status", { p_id: s.id, p_token: s.token }); } catch { return; }
+  if (!b || b.status === "expired" || b.status === "cancelled" || b.day < israelNow().day) { store.clear(); return; }
+  if (b.status === "paid") card("ok-card", `<h2>ההזמנה שלך</h2>${bookingLine(b)}<p class="note">שולם ₪${b.price}.</p>`);
+  else if (b.status === "pending") {
+    const left = Math.max(0, Math.round((new Date(b.hold_until) - Date.now()) / 60000));
+    card("", `<h2>ממתין לתשלום</h2>${bookingLine(b)}<p class="note">החניה שמורה לך עוד ${left} דקות.</p><button class="primary" id="payNow">לתשלום ₪${b.price}</button>`);
+    $("payNow").onclick = async () => { try { await goPay(s.id, s.token); } catch (x) { toast(err(x)); } };
+  }
+}
+
+(async () => {
+  const C = PK.C;
+  if (C.OFFICE_PHONE) $("footer").innerHTML = `שאלות על החניה? משרדי לאוס מדיה: <span class="num" style="direction:ltr;display:inline-block;user-select:all">${esc(C.OFFICE_PHONE)}</span>`;
+  const returned = await handleReturn();
+  try { await load(); } catch (x) { $("banner").textContent = err(x); $("banner").hidden = false; return; }
+  if (!returned) await showSaved();
+  setInterval(() => load().catch(() => {}), 60000);
+})();
+</script>
+</body>
+</html>
