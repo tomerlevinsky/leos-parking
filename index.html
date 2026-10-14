@@ -22,6 +22,12 @@
   <div class="banner" id="banner" hidden></div>
   <section class="panel" id="status" hidden></section>
 
+  <section class="panel where" aria-label="איך מזהים את החניות">
+    <div class="sign" aria-hidden="true"><span class="p">P</span><span class="brand-name">לאוס מדיה</span><span class="guest">אורחים</span></div>
+    <div><h2>החנו רק מתחת לשלט "לאוס מדיה · אורחים"</h2>
+      <p>בחניון יש הרבה חניות, אבל רק <b>שתי החניות המסומנות בשלט הזה</b> הן חלק מהמערכת. חניה במקום אחר תפריע לדיירים אחרים.</p></div>
+  </section>
+
   <section class="now" id="now" aria-label="מצב החניות עכשיו">
     <div class="spot"><span class="lbl">חניה 1 · עכשיו</span><span class="pill p-closed">טוען…</span></div>
     <div class="spot"><span class="lbl">חניה 2 · עכשיו</span><span class="pill p-closed">טוען…</span></div>
@@ -30,7 +36,7 @@
   <nav class="days" id="days" aria-label="בחירת יום"></nav>
 
   <section class="board" aria-label="זמינות החניות">
-    <div class="bhead"><div></div><div>חניה 1</div><div>חניה 2</div></div>
+    <div class="bhead"><div></div><div>חניה 1<small>שלט לאוס אורחים</small></div><div>חניה 2<small>שלט לאוס אורחים</small></div></div>
     <div class="bbody" id="board"></div>
     <p class="legend"><span><i style="background:var(--rent-soft);border-color:var(--rent)"></i>תפוס</span><span><i style="background:var(--closed-soft);border-color:var(--line)"></i>סגור</span><span>לחיצה על זמן פנוי פותחת הזמנה</span></p>
   </section>
@@ -174,7 +180,8 @@ async function showResult(r) {
 // --- returning from Hyp, or a booking left from an earlier visit ---
 function card(cls, html) { const el = $("status"); el.className = "panel " + cls; el.innerHTML = html; el.hidden = false; }
 function bookingLine(b) {
-  return `<p style="margin:0">חניה ${b.spot} · ${esc(dateLabel(b.day, true))} · <span class="num">${hm(b.start)}–${hm(b.end)}</span> ${plateHTML(b.plate)}</p>`;
+  return `<p style="margin:0">חניה ${b.spot} · ${esc(dateLabel(b.day, true))} · <span class="num">${hm(b.start)}–${hm(b.end)}</span> ${plateHTML(b.plate)}</p>
+  <div class="where"><div class="sign sm" aria-hidden="true"><span class="p">P</span><span class="brand-name">לאוס מדיה</span><span class="guest">אורחים</span></div><p style="margin:0">החנו <b>רק בחניה המסומנת בשלט "לאוס מדיה · אורחים"</b>. רכב שחונה במקום אחר בחניון עלול להיגרר.</p></div>`;
 }
 async function handleReturn() {
   const q = new URLSearchParams(location.search);
