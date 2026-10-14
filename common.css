@@ -184,3 +184,5 @@ button{cursor:pointer}
 .spot .lbl{grid-column:2}
 .spot{grid-template-rows:auto auto auto}
 .spot .no{grid-row:span 3}
+.where{flex-wrap:wrap}
+.where > div:last-child{flex:1 1 220px;min-width:0}
