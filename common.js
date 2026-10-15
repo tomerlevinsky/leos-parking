@@ -86,9 +86,11 @@
   }
   async function fn(name, body) {
     if (DEMO) return window.PK_DEMO.fn(name, body);
+    let bearer = C.SUPABASE_KEY;
+    try { const { data: { session } } = await sb.auth.getSession(); if (session) bearer = session.access_token; } catch {}
     const r = await fetch(`${C.SUPABASE_URL}/functions/v1/${name}`, {
       method: "POST",
-      headers: { "Content-Type": "application/json", apikey: C.SUPABASE_KEY, Authorization: `Bearer ${C.SUPABASE_KEY}` },
+      headers: { "Content-Type": "application/json", apikey: C.SUPABASE_KEY, Authorization: `Bearer ${bearer}` },
       body: JSON.stringify(body),
     });
     const j = await r.json().catch(() => ({}));

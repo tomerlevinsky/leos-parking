@@ -187,12 +187,17 @@ async function showResult(r) {
   if (r.status === "paid" || r.status === "paid_conflict") {
     store.set({ id: r.id, token: r.token });
     const b = await rpc("parking_rental_status", { p_id: r.id, p_token: r.token });
-    if (r.status === "paid") card("ok-card", `<h2>החניה שלך מאושרת</h2>${bookingLine(b)}<p class="note">שילמת ₪${b.price}. אפשר לשמור את העמוד הזה. אם תצטרכו לזוז, נתקשר אליך.</p>`);
+    if (r.status === "paid") card("ok-card", `<h2>החניה שלך מאושרת</h2>${bookingLine(b)}<p class="note">שילמת ₪${b.price}. אפשר לשמור את העמוד הזה. אם תצטרכו לזוז, נתקשר אליך.</p>${gateLink(b)}`);
     else card("warn-card", `<h2>התשלום התקבל, אבל החניה נתפסה בינתיים</h2><p style="margin:0">נחזור אליך היום כדי להחזיר את הכסף או למצוא זמן אחר.</p>`);
   } else card("warn-card", `<h2>לא הצלחנו לאמת את התשלום</h2><p style="margin:0">אם חויבת, פנו למשרד ונסדר את זה מיד.</p>`);
 }
 
 // --- returning from Hyp, or a booking left from an earlier visit ---
+function gateLink(b) {
+  if (!b.gate) return "";
+  const id = (store.get && store.get() || {}).id || new URLSearchParams(location.search).get("Order") || "";
+  return id ? `<a class="primary" style="display:block;text-align:center;margin-top:10px" href="gate.html?b=${encodeURIComponent(id)}&t=${encodeURIComponent(b.gate)}">פתיחת שער החניון</a><p class="note">הכפתור פותח את השער רק בזמן ההזמנה שלך (מעט לפני ההתחלה ועד הסוף).</p>` : "";
+}
 function card(cls, html) { const el = $("status"); el.className = "panel " + cls; el.innerHTML = html; el.hidden = false; }
 function bookingLine(b) {
   return `<p style="margin:0">חניית אורחים · ${esc(dateLabel(b.day, true))} · <span class="num">${hm(b.start)}–${hm(b.end)}</span> ${plateHTML(b.plate)}</p>
@@ -218,7 +223,7 @@ async function showSaved() {
   const s = store.get(); if (!s) return;
   let b; try { b = await rpc("parking_rental_status", { p_id: s.id, p_token: s.token }); } catch { return; }
   if (!b || b.status === "expired" || b.status === "cancelled" || b.day < israelNow().day) { store.clear(); return; }
-  if (b.status === "paid") card("ok-card", `<h2>ההזמנה שלך</h2>${bookingLine(b)}<p class="note">שולם ₪${b.price}.</p>`);
+  if (b.status === "paid") card("ok-card", `<h2>ההזמנה שלך</h2>${bookingLine(b)}<p class="note">שולם ₪${b.price}.</p>${gateLink(b)}`);
   else if (b.status === "pending") {
     const left = Math.max(0, Math.round((new Date(b.hold_until) - Date.now()) / 60000));
     card("", `<h2>ממתין לתשלום</h2>${bookingLine(b)}<p class="note">החניה שמורה לך עוד ${left} דקות.</p><button class="primary" id="payNow">לתשלום ₪${b.price}</button>`);

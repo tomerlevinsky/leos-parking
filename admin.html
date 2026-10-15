@@ -44,6 +44,7 @@
     <button role="tab" data-tab="board" aria-selected="true">לוח</button>
     <button role="tab" data-tab="closures" aria-selected="false">חסימות</button>
     <button role="tab" data-tab="staff" aria-selected="false">עובדים</button>
+    <button role="tab" data-tab="gate" aria-selected="false">שער</button>
     <button role="tab" data-tab="settings" aria-selected="false">הגדרות</button>
   </nav>
 
@@ -106,6 +107,38 @@
     <section class="panel"><h2>נכנסו למערכת</h2><div class="list" id="stList"></div></section>
   </div>
 
+  <!-- Gate -->
+  <div class="stack" data-pane="gate" hidden>
+    <section class="panel">
+      <div class="panel-head"><h2>שער החניון (PalGate)</h2><p id="gtState"></p></div>
+      <div id="gtBody"><p class="note">טוען…</p></div>
+    </section>
+    <section class="panel" id="gtLinkPanel" hidden>
+      <h2>חיבור המערכת לשער</h2>
+      <ol class="note" style="padding-inline-start:1.2em;line-height:1.9">
+        <li>פתח את אפליקציית PalGate בטלפון.</li>
+        <li>תפריט ← <b>Device Linking</b> (קישור מכשיר) ← <b>Link a Device</b>.</li>
+        <li>סרוק את הקוד הזה. אחרי הסריקה העמוד יתעדכן לבד.</li>
+      </ol>
+      <div id="gtQr" style="background:#fff;padding:12px;border-radius:12px;width:max-content;margin:12px auto"></div>
+      <p class="note" id="gtWait" style="text-align:center">מחכה לסריקה…</p>
+      <button type="button" class="ghost" id="gtCancel">ביטול</button>
+    </section>
+    <section class="panel">
+      <h2>כללים</h2>
+      <form id="gtForm" class="stack" novalidate>
+        <label class="switch"><span>פתיחת שער למוזמנים פעילה</span><input type="checkbox" id="gtOn"></label>
+        <div class="grid2">
+          <div class="field"><label for="gtEarly">אפשר לפתוח לפני תחילת ההזמנה</label><select id="gtEarly"><option value="0">רק מתחילת ההזמנה</option><option value="10">10 דקות לפני</option><option value="15">15 דקות לפני</option><option value="30">30 דקות לפני</option><option value="60">שעה לפני</option></select></div>
+          <div class="field"><label for="gtMax">מקסימום פתיחות להזמנה</label><select id="gtMax"><option>4</option><option>6</option><option>8</option><option>12</option><option>20</option></select></div>
+        </div>
+        <p class="note">הקישור עובד רק ביום ההזמנה, מהשעה שנקבעה כאן ועד סוף ההזמנה. לקוחות מקבלים אותו בהודעה שהעובד שולח, ושכנים בעמוד אחרי התשלום.</p>
+        <button class="primary" type="submit">שמירה</button>
+      </form>
+    </section>
+    <section class="panel"><div class="panel-head"><h2>יומן פתיחות</h2><p>30 האחרונות</p></div><div class="list" id="gtLog"></div></section>
+  </div>
+
   <!-- Settings -->
   <div class="stack" data-pane="settings" hidden>
     <section class="panel">
@@ -128,6 +161,7 @@
 </template>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js"></script>
 <script src="config.js"></script>
 <script src="common.js"></script>
 <script>
@@ -206,6 +240,48 @@ function fillCfg() {
   $("cfOpen").value = cfg.open_min; $("cfClose").value = cfg.close_min; $("cfMin").value = cfg.client_min_minutes;
   $("cfAhead").value = cfg.rental_days_ahead; $("cfHold").value = cfg.hold_minutes;
 }
+let linking = null;
+const bookingById = (id) => bookings.find((b) => b.id === id);
+async function loadGate() {
+  let g; try { g = await PK.fn("parking-gate", { action: "status" }); } catch { $("gtBody").innerHTML = '<p class="note">לא הצלחתי לטעון את מצב השער.</p>'; return; }
+  $("gtState").innerHTML = g.linked ? (g.device ? '<span class="pill p-free">מחובר</span>' : '<span class="pill p-warn">מחובר, צריך בדיקה</span>') : '<span class="pill p-closed">לא מחובר</span>';
+  const dev = g.device ? `השער <b>${esc(g.device.name)}</b> (${esc(g.device_id)}) נמצא בחשבון.`
+    : g.device === false ? `השער ${esc(g.device_id)} לא נמצא ברשימת השערים של החשבון המחובר.`
+    : g.check ? `בדיקת החיבור נכשלה: <span class="sm" style="direction:ltr;display:inline-block">${esc(g.check)}</span>` : "";
+  $("gtBody").innerHTML = g.linked
+    ? `<p>המערכת מחוברת כמכשיר מקושר בחשבון PalGate ‏<span class="num" style="direction:ltr;display:inline-block">${esc(g.phone || "")}</span>, מאז ${esc(new Date(g.linked_at).toLocaleString("he-IL", { timeZone: "Asia/Jerusalem" }))}.</p><p class="note">${dev}</p>
+       <div class="acts" style="display:flex;gap:8px;flex-wrap:wrap"><button type="button" class="primary" id="gtTest">פתיחת השער עכשיו</button><button type="button" class="ghost" id="gtRelink">חיבור מחדש</button>${armed === "gt:unlink" ? '<button type="button" class="ghost danger" id="gtUnlinkYes">כן, לנתק</button>' : '<button type="button" class="ghost" id="gtUnlink">ניתוק</button>'}</div>`
+    : `<p>כדי שמוזמנים יוכלו לפתוח את השער מהטלפון, מחברים את המערכת פעם אחת לחשבון ה־PalGate שלך, כמו שמוסיפים מכשיר נוסף. המערכת פותחת רק את השער ${esc(g.device_id)}, ורק בזמן ההזמנה.</p>
+       <button type="button" class="primary" id="gtLink">חיבור לשער</button>`;
+  $("gtOn").checked = g.enabled; $("gtEarly").value = String(g.early_minutes); $("gtMax").value = String(g.max_opens);
+  $("gtLog").innerHTML = g.log.length ? g.log.map((l) => { const b = l.booking_id && bookingById(l.booking_id);
+    const who = l.source === "admin" ? "מנהל" : b ? (b.kind === "client" ? "לקוח: " + esc(b.client) : "שכן: " + esc(b.driver)) : l.source === "client" ? "לקוח" : "שכן";
+    return `<div class="row"><div class="t">${esc(new Date(l.at).toLocaleString("he-IL", { timeZone: "Asia/Jerusalem", day: "numeric", month: "numeric", hour: "2-digit", minute: "2-digit" }))}</div>
+      <div class="m"><span>${who}</span>${b ? `<div class="line">${plateHTML(b.plate)}</div>` : ""}${l.ok ? "" : `<span class="sm">${esc(l.error || "")}</span>`}</div>
+      <div class="acts">${l.ok ? '<span class="pill p-free">נפתח</span>' : '<span class="pill p-warn">נכשל</span>'}</div></div>`; }).join("")
+    : '<p class="empty">עוד לא נפתח השער דרך המערכת.</p>';
+  const on = (id, f) => { const el = $(id); if (el) el.onclick = f; };
+  on("gtLink", startLink); on("gtRelink", startLink);
+  on("gtUnlink", () => { armed = "gt:unlink"; loadGate(); });
+  on("gtUnlinkYes", async () => { armed = null; await PK.fn("parking-gate", { action: "unlink" }); toast("נותק"); loadGate(); });
+  on("gtTest", async (e) => { e.target.disabled = true; let r = {}; try { r = await PK.fn("parking-gate", { action: "test-open" }); } catch (x) { r = x; }
+    toast(r.ok ? "השער נפתח" : "הפתיחה נכשלה, הפרטים ביומן"); loadGate(); });
+}
+async function startLink() {
+  let r; try { r = await PK.fn("parking-gate", { action: "link-start" }); } catch { return toast("לא הצלחתי להתחיל חיבור"); }
+  const q = qrcode(0, "M"); q.addData(r.qr); q.make();
+  $("gtQr").innerHTML = q.createSvgTag(6, 2);
+  $("gtLinkPanel").hidden = false; $("gtWait").textContent = "מחכה לסריקה…";
+  $("gtLinkPanel").scrollIntoView({ behavior: "smooth", block: "center" });
+  const me_ = (linking = r.code), t0 = Date.now();
+  while (linking === me_ && Date.now() - t0 < 15 * 60000) {
+    let w; try { w = await PK.fn("parking-gate", { action: "link-wait", code: r.code }); } catch (x) { w = x || {}; }
+    if (linking !== me_) return;
+    if (w.status === "linked") { linking = null; $("gtLinkPanel").hidden = true; toast("השער מחובר"); return loadGate(); }
+    if (w.status === "error" || w.error) { $("gtWait").textContent = "החיבור נכשל: " + (w.error || "שגיאה") + ". אפשר לנסות שוב."; linking = null; return; }
+  }
+  if (linking === me_) { linking = null; $("gtWait").textContent = "הקוד פג. לחץ שוב על חיבור לשער."; }
+}
 async function loadStaff() {
   const list = await rpc("parking_admin_staff");
   $("stList").innerHTML = list.map((s) => `<div class="row"><div class="t">${s.role === "admin" ? "מנהל" : "עובד"}</div>
@@ -220,7 +296,14 @@ function wire() {
     document.querySelectorAll(".tabs button").forEach((x) => x.setAttribute("aria-selected", x === b));
     document.querySelectorAll("[data-pane]").forEach((p) => (p.hidden = p.dataset.pane !== b.dataset.tab));
     if (b.dataset.tab === "staff") loadStaff().catch((x) => toast(err(x)));
+    if (b.dataset.tab === "gate") loadGate();
   };
+  $("gtForm").onsubmit = async (e) => {
+    e.preventDefault();
+    try { await PK.fn("parking-gate", { action: "settings", enabled: $("gtOn").checked, early_minutes: Number($("gtEarly").value), max_opens: Number($("gtMax").value) });
+      toast("נשמר"); loadGate(); } catch { toast("השמירה נכשלה"); }
+  };
+  $("gtCancel").onclick = () => { linking = null; $("gtLinkPanel").hidden = true; };
   timeOpts($("clFrom"), 0, 1410, 30); timeOpts($("clTo"), 30, 1440, 30); $("clTo").value = "1440";
   timeOpts($("cfOpen"), 0, 1410, 30); timeOpts($("cfClose"), 30, 1440, 30);
   $("cfMin").innerHTML = [30, 60, 90, 120, 150, 180, 240].map((m) => `<option value="${m}">${PK.fmtDur(m)}</option>`).join("");
