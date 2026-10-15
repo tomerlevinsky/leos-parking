@@ -155,7 +155,7 @@
           pill = '<span class="pill p-free">פנוי</span>'; det = nx ? "עד " + hm(nx.start) : "עד סוף היום";
         }
       }
-      h += `<div class="spot${pill.includes("p-free") ? " is-free" : ""}"><div class="no num"><span><small>P</small>${sp}</span></div><span class="lbl">חניית אורחים</span>${pill}<span class="det num">${det}</span></div>`;
+      h += `<div class="spot${pill.includes("p-free") ? " is-free" : ""}"><div class="no">P</div><span class="lbl">חניית אורחים</span>${pill}<span class="det num">${det}</span></div>`;
     }
     el.innerHTML = h;
   }
