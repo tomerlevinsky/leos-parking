@@ -23,8 +23,8 @@
   <section class="panel" id="status" hidden></section>
 
   <section class="panel where" aria-label="איך מזהים את החניות">
-    <div class="sign" aria-hidden="true"><span class="logo">LEOS</span><span class="tag">MEDIA &amp; INTERACTIVE</span><span class="guest">אורחים</span></div>
-    <div><h2>החנו רק מתחת לשלט LEOS "אורחים"</h2>
+    <div class="sign" aria-hidden="true"><img src="logo-black.png" alt="LEOS Media &amp; Interactive"><span class="guest">אורחים</span></div>
+    <div><h2>החנו רק מתחת לשלט "לאוס מדיה · אורחים"</h2>
       <p>בחניון יש הרבה חניות. רק <b>שתי החניות שמעליהן תלוי השלט הזה</b> שייכות למערכת. אחרי ההזמנה חונים באחת מהן, זו שפנויה.</p></div>
   </section>
 
@@ -36,7 +36,7 @@
   <nav class="days" id="days" aria-label="בחירת יום"></nav>
 
   <section class="board" aria-label="זמינות החניות">
-    <div class="bhead"><div></div><div>חניית אורחים<small>שלט LEOS אורחים</small></div><div>חניית אורחים<small>שלט LEOS אורחים</small></div></div>
+    <div class="bhead"><div></div><div>חניית אורחים<small>שלט לאוס מדיה אורחים</small></div><div>חניית אורחים<small>שלט לאוס מדיה אורחים</small></div></div>
     <div class="bbody" id="board"></div>
     <p class="legend"><span><i style="background:var(--rent-soft);border-color:var(--rent)"></i>תפוס</span><span><i style="background:var(--closed-soft);border-color:var(--line)"></i>סגור</span><span>לחיצה על זמן פנוי פותחת הזמנה</span></p>
   </section>
@@ -181,7 +181,7 @@ async function showResult(r) {
 function card(cls, html) { const el = $("status"); el.className = "panel " + cls; el.innerHTML = html; el.hidden = false; }
 function bookingLine(b) {
   return `<p style="margin:0">חניית אורחים · ${esc(dateLabel(b.day, true))} · <span class="num">${hm(b.start)}–${hm(b.end)}</span> ${plateHTML(b.plate)}</p>
-  <div class="where"><div class="sign sm" aria-hidden="true"><span class="logo">LEOS</span><span class="tag">MEDIA &amp; INTERACTIVE</span><span class="guest">אורחים</span></div><p style="margin:0">החנו <b>רק באחת משתי החניות עם השלט LEOS "אורחים"</b>, זו שפנויה. רכב שחונה במקום אחר בחניון עלול להיגרר.</p></div>`;
+  <div class="where"><div class="sign sm" aria-hidden="true"><img src="logo-black.png" alt="LEOS Media &amp; Interactive"><span class="guest">אורחים</span></div><p style="margin:0">החנו <b>רק באחת משתי החניות עם השלט "לאוס מדיה · אורחים"</b>, זו שפנויה. רכב שחונה במקום אחר בחניון עלול להיגרר.</p></div>`;
 }
 async function handleReturn() {
   const q = new URLSearchParams(location.search);

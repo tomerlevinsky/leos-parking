@@ -22,8 +22,8 @@
   </header>
 
   <section class="panel where" aria-label="מה להגיד ללקוח">
-    <div class="sign sm" aria-hidden="true"><span class="logo">LEOS</span><span class="tag">MEDIA &amp; INTERACTIVE</span><span class="guest">אורחים</span></div>
-    <div><h2>להגיד ללקוח: לחנות מתחת לשלט LEOS "אורחים"</h2>
+    <div class="sign sm" aria-hidden="true"><img src="logo-black.png" alt="LEOS Media &amp; Interactive"><span class="guest">אורחים</span></div>
+    <div><h2>להגיד ללקוח: לחנות מתחת לשלט "לאוס מדיה · אורחים"</h2>
       <p>בחניון יש הרבה חניות. אחרי השמירה אפשר להעתיק ללקוח הודעה מוכנה עם השעה ומספר הרכב.</p></div>
   </section>
 
@@ -31,7 +31,7 @@
   <nav class="days" id="days" aria-label="בחירת יום"></nav>
 
   <section class="board" aria-label="לוח החניות">
-    <div class="bhead"><div></div><div>חניית אורחים<small>שלט LEOS אורחים</small></div><div>חניית אורחים<small>שלט LEOS אורחים</small></div></div>
+    <div class="bhead"><div></div><div>חניית אורחים<small>שלט לאוס מדיה אורחים</small></div><div>חניית אורחים<small>שלט לאוס מדיה אורחים</small></div></div>
     <div class="bbody" id="board"></div>
     <p class="legend"><span><i style="background:var(--accent-soft);border-color:var(--accent)"></i>לקוח</span><span><i style="background:var(--rent-soft);border-color:var(--rent)"></i>שכן משלם</span><span><i style="background:var(--closed-soft);border-color:var(--line)"></i>סגור</span><span>לחיצה על זמן פנוי פותחת הזמנה</span></p>
   </section>
@@ -116,7 +116,7 @@ function row(b, withDate) {
   const who = b.kind === "client" ? `לקוח: ${esc(b.client)}${b.driver && b.driver !== b.client ? ` <span class="sm">· נהג/ת: ${esc(b.driver)}</span>` : ""}<br><span class="sm">שמר/ה: <b>${esc(bookerName(b.by))}</b></span>` : `שכן: ${esc(b.driver)}`;
   const pill = b.kind === "client" ? '<span class="pill p-client">לקוח</span>' : b.status === "pending" ? '<span class="pill p-warn">ממתין לתשלום</span>' : '<span class="pill p-rent">שכן · שולם</span>';
   const phone = b.phone ? `<div class="phone"><code>${esc(fmtPhone(b.phone))}</code><a href="tel:${esc(b.phone)}">חיוג</a></div>` : "";
-  const msg = b.kind === "client" ? `היי, שמרנו לך חניה בבניין של לאוס מדיה, ${dateLabel(b.day, true)} בין ${hm(b.start)} ל־${hm(b.end)}, לרכב ${PK.fmtPlate(b.plate)}. בחניון יש הרבה חניות: חנה רק באחת משתי החניות שמעליהן השלט של LEOS עם הכיתוב "אורחים". נתראה!` : "";
+  const msg = b.kind === "client" ? `היי, שמרנו לך חניה בבניין של לאוס מדיה, ${dateLabel(b.day, true)} בין ${hm(b.start)} ל־${hm(b.end)}, לרכב ${PK.fmtPlate(b.plate)}. בחניון יש הרבה חניות: חנה רק באחת משתי החניות שמעליהן השלט "לאוס מדיה · אורחים". נתראה!` : "";
   const canCancel = b.kind === "client" && b.by === me.email;
   const act = !canCancel ? "" : armed === b.id ? `<button type="button" class="ghost danger" data-yes="${b.id}">כן, לבטל</button>` : `<button type="button" class="ghost" data-cancel="${b.id}">ביטול</button>`;
   return `<div class="row"><div class="t">${hm(b.start)}–${hm(b.end)}<small>${withDate ? esc(dateLabel(b.day)) : "חניית אורחים"}</small></div>
