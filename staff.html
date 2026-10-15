@@ -40,7 +40,7 @@
   <section class="panel where" aria-label="מה להגיד ללקוח">
     <div class="sign sm" aria-hidden="true"><img src="logo-black.png" alt="LEOS Media &amp; Interactive"><span class="guest">אורחים</span></div>
     <div><h2>להגיד ללקוח: לחנות מתחת לשלט "לאוס מדיה · אורחים"</h2>
-      <p>בחניון יש הרבה חניות. אחרי השמירה אפשר להעתיק ללקוח הודעה מוכנה עם השעה ומספר הרכב.</p></div>
+      <p>בחניון יש הרבה חניות. אחרי השמירה אפשר להעתיק ללקוח הודעה מוכנה עם השעה, מספר הרכב <b>וקישור לפתיחת שער החניון מהטלפון</b>. הקישור עובד רק ביום ההגעה ובזמן ההזמנה.</p></div>
   </section>
 
   <section class="now" id="now"></section>
@@ -136,7 +136,7 @@ function row(b, withDate) {
   const canCancel = b.kind === "client" && b.by === me.email;
   const act = !canCancel ? "" : armed === b.id ? `<button type="button" class="ghost danger" data-yes="${b.id}">כן, לבטל</button>` : `<button type="button" class="ghost" data-cancel="${b.id}">ביטול</button>`;
   return `<div class="row"><div class="t">${hm(b.start)}–${hm(b.end)}<small>${withDate ? esc(dateLabel(b.day)) : "חניית אורחים"}</small></div>
-    <div class="m"><span>${who}</span><div class="line">${plateHTML(b.plate)}${pill}</div>${phone}</div><div class="acts">${msg ? `<button type="button" class="ghost" data-msg="${esc(msg)}">הודעה ללקוח</button>` : ""}${act}</div></div>`;
+    <div class="m"><span>${who}</span><div class="line">${plateHTML(b.plate)}${pill}${b.opens ? `<span class="pill p-free">השער נפתח ${b.opens}×</span>` : ""}</div>${phone}</div><div class="acts">${msg ? `<button type="button" class="ghost" data-msg="${esc(msg)}">הודעה ללקוח</button>` : ""}${b.gate ? `<button type="button" class="ghost" data-copy="${esc(`${location.origin}/gate.html?b=${b.id}&t=${b.gate}`)}">קישור לשער</button>` : ""}${act}</div></div>`;
 }
 function fillDur() {
   PK.fillDur($("fDur"), { cfg, start: Number($("fStart").value), minLen: cfg.client_min_minutes, step: 30 });
@@ -170,13 +170,14 @@ function wire() {
     try {
       const s = Number($("fStart").value), e = s + Number($("fDur").value);
       const r = await rpc("parking_create_client", { p_day: selDate, p_spot: Number($("fSpot").value) || null, p_start: s, p_end: e, p_plate: plate, p_driver: $("fDriver").value, p_phone: phone, p_client: client });
-      toast(`החניה נשמרה ל${client}. ההודעה ללקוח מחכה ברשימה "ההזמנות שלי"`);
+      toast(`החניה נשמרה ל${client}. ההודעה ללקוח, כולל קישור לפתיחת השער, מחכה ברשימה "ההזמנות שלי"`);
       $("fClient").value = ""; $("fPlate").value = ""; $("fDriver").value = ""; $("fPhone").value = "";
     } catch (x) { fail(err(x)); }
     finally { btn.textContent = "שמירת חניה ללקוח"; await load().catch(() => {}); }
   });
   document.addEventListener("click", async (e) => {
     const t = e.target.closest("button"); if (!t) return;
+    if (t.dataset.copy) { try { await navigator.clipboard.writeText(t.dataset.copy); toast("הקישור לשער הועתק"); } catch { toast(t.dataset.copy); } return; }
     if (t.dataset.msg) { try { await navigator.clipboard.writeText(t.dataset.msg); toast("ההודעה הועתקה. אפשר להדביק בוואטסאפ"); } catch { toast(t.dataset.msg); } return; }
     if (t.dataset.cancel) { armed = t.dataset.cancel; render(); return; }
     if (t.dataset.yes) { try { await rpc("parking_cancel", { p_id: t.dataset.yes }); armed = null; toast("ההזמנה בוטלה"); await load(); } catch (x) { toast(err(x)); } }

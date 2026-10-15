@@ -184,3 +184,5 @@ button{cursor:pointer}
 .spot .no{grid-row:span 3}
 .where{flex-wrap:wrap}
 .where > div:last-child{flex:1 1 220px;min-width:0}
+
+.gate-note{margin:10px 0 0;padding:10px 12px;border-radius:10px;background:var(--accent-soft);border:1px solid var(--accent);font-size:15px}

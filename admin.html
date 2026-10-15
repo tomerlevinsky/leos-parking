@@ -215,9 +215,10 @@ function row(b) {
   const phone = b.phone ? `<div class="phone"><code>${esc(fmtPhone(b.phone))}</code><a href="tel:${esc(b.phone)}">חיוג</a><a href="https://wa.me/972${esc(b.phone.slice(1))}" target="_blank" rel="noopener">וואטסאפ</a></div>` : "";
   let acts = "";
   if (b.kind === "rental" && (b.status === "pending" || b.status === "paid_conflict")) acts += `<button class="ghost" data-paid="${b.id}">סימון כשולם</button>`;
+  if (b.gate) acts += `<button class="ghost" data-copy="${esc(`${location.origin}/gate.html?b=${b.id}&t=${b.gate}`)}">קישור לשער</button>`;
   acts += armed === b.id ? `<button class="ghost danger" data-yes="${b.id}">כן, לבטל</button>` : `<button class="ghost" data-cancel="${b.id}">ביטול</button>`;
   return `<div class="row"><div class="t">${hm(b.start)}–${hm(b.end)}<small>חניה ${b.spot}</small></div>
-    <div class="m"><span>${who}</span><div class="line">${plateHTML(b.plate)}${pill}</div>${phone}</div><div class="acts">${acts}</div></div>`;
+    <div class="m"><span>${who}</span><div class="line">${plateHTML(b.plate)}${pill}${b.opens ? `<span class="pill p-free">השער נפתח ${b.opens}×</span>` : ""}</div>${phone}</div><div class="acts">${acts}</div></div>`;
 }
 
 function timeOpts(sel, from, to, step) { let h = ""; for (let m = from; m <= to; m += step) h += `<option value="${m}">${hm(m)}</option>`; sel.innerHTML = h; }
@@ -340,6 +341,7 @@ function wire() {
   document.addEventListener("click", async (e) => {
     const t = e.target.closest("button"); if (!t) return;
     const d = t.dataset;
+    if (d.copy) { try { await navigator.clipboard.writeText(d.copy); toast("הקישור לשער הועתק"); } catch { toast(d.copy); } return; }
     if (d.cancel) { armed = d.cancel; render(); return; }
     if (d.starm) { armed = "st:" + d.starm; loadStaff(); return; }
     try {
