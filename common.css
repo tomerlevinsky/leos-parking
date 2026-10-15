@@ -167,15 +167,14 @@ button{cursor:pointer}
 @media (max-width:420px){.grid2{grid-template-columns:1fr}.stat b{font-size:17px}}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;scroll-behavior:auto!important}}
 
-/* The physical sign at the spot: "לאוס מדיה · אורחים". Shown wherever people need to find the spot. */
-.sign{display:inline-flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;flex:0 0 auto;
-  width:96px;padding:10px 6px 8px;border-radius:8px;border:3px solid #fff;outline:2px solid var(--brand-b);
-  background:linear-gradient(160deg,var(--brand-a),var(--brand-b));color:#fff;text-align:center;line-height:1.1;box-shadow:var(--shadow)}
-.sign .p{font-family:var(--f-display);font-size:30px;line-height:1}
-.sign .brand-name{font-weight:700;font-size:12px}
-.sign .guest{font-family:var(--f-display);font-size:17px;letter-spacing:.02em}
-.sign.sm{width:64px;padding:6px 4px 5px;border-width:2px;outline-width:1.5px}
-.sign.sm .p{font-size:20px} .sign.sm .brand-name{font-size:9px} .sign.sm .guest{font-size:12px}
+/* The physical sign at the spot: white card, LEOS wordmark, "אורחים". Same in both themes, like the real sign. */
+.sign{display:inline-flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;flex:0 0 auto;
+  width:104px;padding:10px 8px 8px;border-radius:4px;background:#fff;color:#111;border:1.5px solid #cfcfd6;text-align:center;line-height:1;box-shadow:var(--shadow)}
+.sign .logo{font-family:"Arial Black",Arial,sans-serif;font-weight:900;font-size:26px;letter-spacing:-.04em;direction:ltr}
+.sign .tag{font-family:Arial,sans-serif;font-size:6.5px;font-weight:700;letter-spacing:.06em;direction:ltr;color:#333}
+.sign .guest{font-family:var(--f-body);font-weight:700;font-size:17px;margin-top:3px}
+.sign.sm{width:72px;padding:7px 5px 6px}
+.sign.sm .logo{font-size:18px} .sign.sm .tag{font-size:4.6px} .sign.sm .guest{font-size:12px}
 .where{display:flex;gap:14px;align-items:center}
 .where h2{font-size:17px}
 .where p{margin:4px 0 0;font-size:14px;color:var(--muted)}

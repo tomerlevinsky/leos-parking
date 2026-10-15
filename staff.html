@@ -22,8 +22,8 @@
   </header>
 
   <section class="panel where" aria-label="מה להגיד ללקוח">
-    <div class="sign sm" aria-hidden="true"><span class="p">P</span><span class="brand-name">לאוס מדיה</span><span class="guest">אורחים</span></div>
-    <div><h2>להגיד ללקוח: לחנות מתחת לשלט "לאוס מדיה · אורחים"</h2>
+    <div class="sign sm" aria-hidden="true"><span class="logo">LEOS</span><span class="tag">MEDIA &amp; INTERACTIVE</span><span class="guest">אורחים</span></div>
+    <div><h2>להגיד ללקוח: לחנות מתחת לשלט LEOS "אורחים"</h2>
       <p>בחניון יש הרבה חניות. אחרי השמירה אפשר להעתיק ללקוח הודעה מוכנה עם השעה ומספר הרכב.</p></div>
   </section>
 
@@ -31,7 +31,7 @@
   <nav class="days" id="days" aria-label="בחירת יום"></nav>
 
   <section class="board" aria-label="לוח החניות">
-    <div class="bhead"><div></div><div>חניה 1<small>שלט לאוס אורחים</small></div><div>חניה 2<small>שלט לאוס אורחים</small></div></div>
+    <div class="bhead"><div></div><div>חניית אורחים<small>שלט LEOS אורחים</small></div><div>חניית אורחים<small>שלט LEOS אורחים</small></div></div>
     <div class="bbody" id="board"></div>
     <p class="legend"><span><i style="background:var(--accent-soft);border-color:var(--accent)"></i>לקוח</span><span><i style="background:var(--rent-soft);border-color:var(--rent)"></i>שכן משלם</span><span><i style="background:var(--closed-soft);border-color:var(--line)"></i>סגור</span><span>לחיצה על זמן פנוי פותחת הזמנה</span></p>
   </section>
@@ -41,7 +41,7 @@
     <form id="form" class="stack" novalidate>
       <div class="field"><label for="fClient">שם הלקוח / החברה</label><input id="fClient" autocomplete="off" placeholder="למשל: אלקטרה – פגישת קמפיין"></div>
       <div class="grid2">
-        <div class="field"><label for="fSpot">חניה</label>
+        <div class="field" hidden><label for="fSpot">חניה</label>
           <select id="fSpot"><option value="0">הראשונה שפנויה</option><option value="1">חניה 1</option><option value="2">חניה 2</option></select></div>
         <div class="field"><label for="fStart">משעה</label><select id="fStart" class="num"></select></div>
       </div>
@@ -116,10 +116,10 @@ function row(b, withDate) {
   const who = b.kind === "client" ? `לקוח: ${esc(b.client)}${b.driver && b.driver !== b.client ? ` <span class="sm">· נהג/ת: ${esc(b.driver)}</span>` : ""}<br><span class="sm">שמר/ה: <b>${esc(bookerName(b.by))}</b></span>` : `שכן: ${esc(b.driver)}`;
   const pill = b.kind === "client" ? '<span class="pill p-client">לקוח</span>' : b.status === "pending" ? '<span class="pill p-warn">ממתין לתשלום</span>' : '<span class="pill p-rent">שכן · שולם</span>';
   const phone = b.phone ? `<div class="phone"><code>${esc(fmtPhone(b.phone))}</code><a href="tel:${esc(b.phone)}">חיוג</a></div>` : "";
-  const msg = b.kind === "client" ? `היי, שמרנו לך חניה בבניין של לאוס מדיה, ${dateLabel(b.day, true)} בין ${hm(b.start)} ל־${hm(b.end)}, לרכב ${PK.fmtPlate(b.plate)}. בחניון יש הרבה חניות: חנה רק בחניה המסומנת בשלט "לאוס מדיה · אורחים". נתראה!` : "";
+  const msg = b.kind === "client" ? `היי, שמרנו לך חניה בבניין של לאוס מדיה, ${dateLabel(b.day, true)} בין ${hm(b.start)} ל־${hm(b.end)}, לרכב ${PK.fmtPlate(b.plate)}. בחניון יש הרבה חניות: חנה רק באחת משתי החניות שמעליהן השלט של LEOS עם הכיתוב "אורחים". נתראה!` : "";
   const canCancel = b.kind === "client" && b.by === me.email;
   const act = !canCancel ? "" : armed === b.id ? `<button type="button" class="ghost danger" data-yes="${b.id}">כן, לבטל</button>` : `<button type="button" class="ghost" data-cancel="${b.id}">ביטול</button>`;
-  return `<div class="row"><div class="t">${hm(b.start)}–${hm(b.end)}<small>${withDate ? esc(dateLabel(b.day)) + " · " : ""}חניה ${b.spot}</small></div>
+  return `<div class="row"><div class="t">${hm(b.start)}–${hm(b.end)}<small>${withDate ? esc(dateLabel(b.day)) : "חניית אורחים"}</small></div>
     <div class="m"><span>${who}</span><div class="line">${plateHTML(b.plate)}${pill}</div>${phone}</div><div class="acts">${msg ? `<button type="button" class="ghost" data-msg="${esc(msg)}">הודעה ללקוח</button>` : ""}${act}</div></div>`;
 }
 function fillDur() {
@@ -132,7 +132,7 @@ function update() {
   const s = Number($("fStart").value), d = Number($("fDur").value); $("err").hidden = true;
   if (!d) { $("sumWhat").textContent = "אין זמן פנוי ביום הזה"; $("submit").disabled = true; return; }
   const sp = pickSpot(s, s + d);
-  $("sumWhat").textContent = `${sp ? "חניה " + sp : "אין חניה פנויה"} · ${hm(s)}–${hm(s + d)}`;
+  $("sumWhat").textContent = `${sp ? "חניית אורחים פנויה" : "אין חניה פנויה"} · ${hm(s)}–${hm(s + d)}`;
   if (!sp) { $("err").textContent = "החניה תפוסה בחלק מהזמן הזה. נסו שעה אחרת או את החניה השנייה."; $("err").hidden = false; }
   $("submit").disabled = !sp;
 }
@@ -154,7 +154,7 @@ function wire() {
     try {
       const s = Number($("fStart").value), e = s + Number($("fDur").value);
       const r = await rpc("parking_create_client", { p_day: selDate, p_spot: Number($("fSpot").value) || null, p_start: s, p_end: e, p_plate: plate, p_driver: $("fDriver").value, p_phone: phone, p_client: client });
-      toast(`חניה ${r.spot} נשמרה ל${client}. ההודעה ללקוח מחכה ברשימה "ההזמנות שלי"`);
+      toast(`החניה נשמרה ל${client}. ההודעה ללקוח מחכה ברשימה "ההזמנות שלי"`);
       $("fClient").value = ""; $("fPlate").value = ""; $("fDriver").value = ""; $("fPhone").value = "";
     } catch (x) { fail(err(x)); }
     finally { btn.textContent = "שמירת חניה ללקוח"; await load().catch(() => {}); }

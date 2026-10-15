@@ -23,9 +23,9 @@
   <section class="panel" id="status" hidden></section>
 
   <section class="panel where" aria-label="איך מזהים את החניות">
-    <div class="sign" aria-hidden="true"><span class="p">P</span><span class="brand-name">לאוס מדיה</span><span class="guest">אורחים</span></div>
-    <div><h2>החנו רק מתחת לשלט "לאוס מדיה · אורחים"</h2>
-      <p>בחניון יש הרבה חניות, אבל רק <b>שתי החניות המסומנות בשלט הזה</b> הן חלק מהמערכת. חניה במקום אחר תפריע לדיירים אחרים.</p></div>
+    <div class="sign" aria-hidden="true"><span class="logo">LEOS</span><span class="tag">MEDIA &amp; INTERACTIVE</span><span class="guest">אורחים</span></div>
+    <div><h2>החנו רק מתחת לשלט LEOS "אורחים"</h2>
+      <p>בחניון יש הרבה חניות. רק <b>שתי החניות שמעליהן תלוי השלט הזה</b> שייכות למערכת. אחרי ההזמנה חונים באחת מהן, זו שפנויה.</p></div>
   </section>
 
   <section class="now" id="now" aria-label="מצב החניות עכשיו">
@@ -36,7 +36,7 @@
   <nav class="days" id="days" aria-label="בחירת יום"></nav>
 
   <section class="board" aria-label="זמינות החניות">
-    <div class="bhead"><div></div><div>חניה 1<small>שלט לאוס אורחים</small></div><div>חניה 2<small>שלט לאוס אורחים</small></div></div>
+    <div class="bhead"><div></div><div>חניית אורחים<small>שלט LEOS אורחים</small></div><div>חניית אורחים<small>שלט LEOS אורחים</small></div></div>
     <div class="bbody" id="board"></div>
     <p class="legend"><span><i style="background:var(--rent-soft);border-color:var(--rent)"></i>תפוס</span><span><i style="background:var(--closed-soft);border-color:var(--line)"></i>סגור</span><span>לחיצה על זמן פנוי פותחת הזמנה</span></p>
   </section>
@@ -46,7 +46,7 @@
     <form id="form" class="stack" novalidate>
       <div class="step" data-n="1">מתי</div>
       <div class="grid2">
-        <div class="field"><label for="fSpot">חניה</label>
+        <div class="field" hidden><label for="fSpot">חניה</label>
           <select id="fSpot"><option value="0">הראשונה שפנויה</option><option value="1">חניה 1</option><option value="2">חניה 2</option></select></div>
         <div class="field"><label for="fStart">משעה</label><select id="fStart" class="num"></select></div>
       </div>
@@ -127,7 +127,7 @@ function update() {
   $("err").hidden = true;
   if (!d) { $("sumWhat").textContent = "אין זמן פנוי להזמנה ביום הזה"; $("sumAmt").textContent = ""; $("submit").disabled = true; return; }
   const e = s + d, sp = pickSpot(s, e), amt = price(s, e);
-  $("sumWhat").textContent = `${sp ? "חניה " + sp : "אין חניה פנויה"} · ${hm(s)}–${hm(e)}`;
+  $("sumWhat").textContent = `${sp ? "חניית אורחים פנויה" : "אין חניה פנויה"} · ${hm(s)}–${hm(e)}`;
   $("sumAmt").textContent = "₪" + amt;
   $("submit").textContent = `המשך לתשלום ₪${amt}`;
   if (!sp) { $("err").textContent = Number($("fSpot").value) ? "החניה הזאת תפוסה בחלק מהזמן. נסו את החניה השנייה או שעה אחרת." : "שתי החניות תפוסות בחלק מהזמן הזה. נסו שעה אחרת."; $("err").hidden = false; }
@@ -180,8 +180,8 @@ async function showResult(r) {
 // --- returning from Hyp, or a booking left from an earlier visit ---
 function card(cls, html) { const el = $("status"); el.className = "panel " + cls; el.innerHTML = html; el.hidden = false; }
 function bookingLine(b) {
-  return `<p style="margin:0">חניה ${b.spot} · ${esc(dateLabel(b.day, true))} · <span class="num">${hm(b.start)}–${hm(b.end)}</span> ${plateHTML(b.plate)}</p>
-  <div class="where"><div class="sign sm" aria-hidden="true"><span class="p">P</span><span class="brand-name">לאוס מדיה</span><span class="guest">אורחים</span></div><p style="margin:0">החנו <b>רק בחניה המסומנת בשלט "לאוס מדיה · אורחים"</b>. רכב שחונה במקום אחר בחניון עלול להיגרר.</p></div>`;
+  return `<p style="margin:0">חניית אורחים · ${esc(dateLabel(b.day, true))} · <span class="num">${hm(b.start)}–${hm(b.end)}</span> ${plateHTML(b.plate)}</p>
+  <div class="where"><div class="sign sm" aria-hidden="true"><span class="logo">LEOS</span><span class="tag">MEDIA &amp; INTERACTIVE</span><span class="guest">אורחים</span></div><p style="margin:0">החנו <b>רק באחת משתי החניות עם השלט LEOS "אורחים"</b>, זו שפנויה. רכב שחונה במקום אחר בחניון עלול להיגרר.</p></div>`;
 }
 async function handleReturn() {
   const q = new URLSearchParams(location.search);
