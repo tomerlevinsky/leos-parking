@@ -130,9 +130,10 @@
         <label class="switch"><span>פתיחת שער למוזמנים פעילה</span><input type="checkbox" id="gtOn"></label>
         <div class="grid2">
           <div class="field"><label for="gtEarly">אפשר לפתוח לפני תחילת ההזמנה</label><select id="gtEarly"><option value="0">רק מתחילת ההזמנה</option><option value="10">10 דקות לפני</option><option value="15">15 דקות לפני</option><option value="30">30 דקות לפני</option><option value="60">שעה לפני</option></select></div>
-          <div class="field"><label for="gtMax">מקסימום פתיחות להזמנה</label><select id="gtMax"><option>4</option><option>6</option><option>8</option><option>12</option><option>20</option></select></div>
+          <div class="field"><label for="gtMax">מקסימום פתיחות להזמנה</label><select id="gtMax"><option>2</option><option>3</option><option>4</option><option>6</option><option>8</option></select></div>
+          <div class="field"><label for="gtGap">זמן מינימלי בין פתיחות</label><select id="gtGap"><option value="30">30 שניות</option><option value="60">דקה</option><option value="300">5 דקות</option><option value="900">רבע שעה</option></select></div>
         </div>
-        <p class="note">הקישור עובד רק ביום ההזמנה, מהשעה שנקבעה כאן ועד סוף ההזמנה. לקוחות מקבלים אותו בהודעה שהעובד שולח, ושכנים בעמוד אחרי התשלום.</p>
+        <p class="note">הקישור עובד רק ביום ההזמנה, מהשעה שנקבעה כאן ועד סוף ההזמנה, ורק בטלפון הראשון שפתח איתו (קישור שהועבר הלאה לא יעבוד). לקוחות מקבלים אותו בהודעה שהעובד שולח, ושכנים בעמוד אחרי התשלום.</p>
         <button class="primary" type="submit">שמירה</button>
       </form>
     </section>
@@ -215,6 +216,7 @@ function row(b) {
   const phone = b.phone ? `<div class="phone"><code>${esc(fmtPhone(b.phone))}</code><a href="tel:${esc(b.phone)}">חיוג</a><a href="https://wa.me/972${esc(b.phone.slice(1))}" target="_blank" rel="noopener">וואטסאפ</a></div>` : "";
   let acts = "";
   if (b.kind === "rental" && (b.status === "pending" || b.status === "paid_conflict")) acts += `<button class="ghost" data-paid="${b.id}">סימון כשולם</button>`;
+  if (b.bound) acts += `<button class="ghost" data-reset="${b.id}">פתיחה מטלפון אחר</button>`;
   if (b.gate) acts += `<button class="ghost" data-copy="${esc(`${location.origin}/gate.html?b=${b.id}&t=${b.gate}`)}">קישור לשער</button>`;
   acts += armed === b.id ? `<button class="ghost danger" data-yes="${b.id}">כן, לבטל</button>` : `<button class="ghost" data-cancel="${b.id}">ביטול</button>`;
   return `<div class="row"><div class="t">${hm(b.start)}–${hm(b.end)}<small>חניה ${b.spot}</small></div>
@@ -254,7 +256,7 @@ async function loadGate() {
        <div class="acts" style="display:flex;gap:8px;flex-wrap:wrap"><button type="button" class="primary" id="gtTest">פתיחת השער עכשיו</button><button type="button" class="ghost" id="gtRelink">חיבור מחדש</button>${armed === "gt:unlink" ? '<button type="button" class="ghost danger" id="gtUnlinkYes">כן, לנתק</button>' : '<button type="button" class="ghost" id="gtUnlink">ניתוק</button>'}</div>`
     : `<p>כדי שמוזמנים יוכלו לפתוח את השער מהטלפון, מחברים את המערכת פעם אחת לחשבון ה־PalGate שלך, כמו שמוסיפים מכשיר נוסף. המערכת פותחת רק את השער ${esc(g.device_id)}, ורק בזמן ההזמנה.</p>
        <button type="button" class="primary" id="gtLink">חיבור לשער</button>`;
-  $("gtOn").checked = g.enabled; $("gtEarly").value = String(g.early_minutes); $("gtMax").value = String(g.max_opens);
+  $("gtOn").checked = g.enabled; $("gtEarly").value = String(g.early_minutes); $("gtMax").value = String(g.max_opens); $("gtGap").value = String(g.min_gap_seconds);
   $("gtLog").innerHTML = g.log.length ? g.log.map((l) => { const b = l.booking_id && bookingById(l.booking_id);
     const who = l.source === "admin" ? "מנהל" : b ? (b.kind === "client" ? "לקוח: " + esc(b.client) : "שכן: " + esc(b.driver)) : l.source === "client" ? "לקוח" : "שכן";
     return `<div class="row"><div class="t">${esc(new Date(l.at).toLocaleString("he-IL", { timeZone: "Asia/Jerusalem", day: "numeric", month: "numeric", hour: "2-digit", minute: "2-digit" }))}</div>
@@ -301,7 +303,7 @@ function wire() {
   };
   $("gtForm").onsubmit = async (e) => {
     e.preventDefault();
-    try { await PK.fn("parking-gate", { action: "settings", enabled: $("gtOn").checked, early_minutes: Number($("gtEarly").value), max_opens: Number($("gtMax").value) });
+    try { await PK.fn("parking-gate", { action: "settings", enabled: $("gtOn").checked, early_minutes: Number($("gtEarly").value), max_opens: Number($("gtMax").value), min_gap_seconds: Number($("gtGap").value) });
       toast("נשמר"); loadGate(); } catch { toast("השמירה נכשלה"); }
   };
   $("gtCancel").onclick = () => { linking = null; $("gtLinkPanel").hidden = true; };
@@ -341,6 +343,7 @@ function wire() {
   document.addEventListener("click", async (e) => {
     const t = e.target.closest("button"); if (!t) return;
     const d = t.dataset;
+    if (d.reset) { try { await PK.fn("parking-gate", { action: "reset-device", b: d.reset }); toast("עכשיו אפשר לפתוח מהקישור בטלפון אחר"); } catch { toast("לא הצלחתי"); } await load(); return; }
     if (d.copy) { try { await navigator.clipboard.writeText(d.copy); toast("הקישור לשער הועתק"); } catch { toast(d.copy); } return; }
     if (d.cancel) { armed = d.cancel; render(); return; }
     if (d.starm) { armed = "st:" + d.starm; loadStaff(); return; }

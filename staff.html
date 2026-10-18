@@ -132,11 +132,11 @@ function row(b, withDate) {
   const who = b.kind === "client" ? `לקוח: ${esc(b.client)}${b.driver && b.driver !== b.client ? ` <span class="sm">· נהג/ת: ${esc(b.driver)}</span>` : ""}<br><span class="sm">שמר/ה: <b>${esc(bookerName(b.by))}</b></span>` : `שכן: ${esc(b.driver)}`;
   const pill = b.kind === "client" ? '<span class="pill p-client">לקוח</span>' : b.status === "pending" ? '<span class="pill p-warn">ממתין לתשלום</span>' : '<span class="pill p-rent">שכן · שולם</span>';
   const phone = b.phone ? `<div class="phone"><code>${esc(fmtPhone(b.phone))}</code><a href="tel:${esc(b.phone)}">חיוג</a></div>` : "";
-  const msg = b.kind === "client" ? `היי, שמרנו לך חניה בבניין של לאוס מדיה, ${dateLabel(b.day, true)} בין ${hm(b.start)} ל־${hm(b.end)}, לרכב ${PK.fmtPlate(b.plate)}. בחניון יש הרבה חניות: חנה רק באחת משתי החניות שמעליהן השלט "לאוס מדיה · אורחים".${b.gate ? `\n\nאת שער החניון פותחים מהקישור הזה (עובד ביום ההגעה, החל מקצת לפני השעה): ${location.origin}/gate.html?b=${b.id}&t=${b.gate}` : ""}\n\nנתראה!` : "";
+  const msg = b.kind === "client" ? `היי, שמרנו לך חניה בבניין של לאוס מדיה, ${dateLabel(b.day, true)} בין ${hm(b.start)} ל־${hm(b.end)}, לרכב ${PK.fmtPlate(b.plate)}. בחניון יש הרבה חניות: חנה רק באחת משתי החניות שמעליהן השלט "לאוס מדיה · אורחים".${b.gate ? `\n\nאת שער החניון פותחים מהקישור הזה (עובד רק בזמן ההזמנה ורק בטלפון שלך, לא להעביר הלאה): ${location.origin}/gate.html?b=${b.id}&t=${b.gate}` : ""}\n\nנתראה!` : "";
   const canCancel = b.kind === "client" && b.by === me.email;
   const act = !canCancel ? "" : armed === b.id ? `<button type="button" class="ghost danger" data-yes="${b.id}">כן, לבטל</button>` : `<button type="button" class="ghost" data-cancel="${b.id}">ביטול</button>`;
   return `<div class="row"><div class="t">${hm(b.start)}–${hm(b.end)}<small>${withDate ? esc(dateLabel(b.day)) : "חניית אורחים"}</small></div>
-    <div class="m"><span>${who}</span><div class="line">${plateHTML(b.plate)}${pill}${b.opens ? `<span class="pill p-free">השער נפתח ${b.opens}×</span>` : ""}</div>${phone}</div><div class="acts">${msg ? `<button type="button" class="ghost" data-msg="${esc(msg)}">הודעה ללקוח</button>` : ""}${b.gate ? `<button type="button" class="ghost" data-copy="${esc(`${location.origin}/gate.html?b=${b.id}&t=${b.gate}`)}">קישור לשער</button>` : ""}${act}</div></div>`;
+    <div class="m"><span>${who}</span><div class="line">${plateHTML(b.plate)}${pill}${b.opens ? `<span class="pill p-free">השער נפתח ${b.opens}×</span>` : ""}</div>${phone}</div><div class="acts">${msg ? `<button type="button" class="ghost" data-msg="${esc(msg)}">הודעה ללקוח</button>` : ""}${b.bound ? `<button type="button" class="ghost" data-reset="${b.id}">פתיחה מטלפון אחר</button>` : ""}${b.gate ? `<button type="button" class="ghost" data-copy="${esc(`${location.origin}/gate.html?b=${b.id}&t=${b.gate}`)}">קישור לשער</button>` : ""}${act}</div></div>`;
 }
 function fillDur() {
   PK.fillDur($("fDur"), { cfg, start: Number($("fStart").value), minLen: cfg.client_min_minutes, step: 30 });
@@ -177,6 +177,7 @@ function wire() {
   });
   document.addEventListener("click", async (e) => {
     const t = e.target.closest("button"); if (!t) return;
+    if (t.dataset.reset) { try { await PK.fn("parking-gate", { action: "reset-device", b: t.dataset.reset }); toast("עכשיו אפשר לפתוח את השער מהקישור בטלפון אחר"); } catch { toast("לא הצלחתי, נסו שוב"); } await load().catch(() => {}); return; }
     if (t.dataset.copy) { try { await navigator.clipboard.writeText(t.dataset.copy); toast("הקישור לשער הועתק"); } catch { toast(t.dataset.copy); } return; }
     if (t.dataset.msg) { try { await navigator.clipboard.writeText(t.dataset.msg); toast("ההודעה הועתקה. אפשר להדביק בוואטסאפ"); } catch { toast(t.dataset.msg); } return; }
     if (t.dataset.cancel) { armed = t.dataset.cancel; render(); return; }

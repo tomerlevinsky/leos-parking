@@ -44,7 +44,7 @@
   <section class="panel" id="main">
     <button type="button" class="gate-btn" id="open" disabled>פתיחת שער<small id="openSub">רגע…</small></button>
     <p class="gate-msg" id="msg"></p>
-    <p class="note" style="text-align:center" id="hint">לחצו כשאתם מול השער. הוא נפתח תוך כמה שניות.</p>
+    <p class="note" style="text-align:center" id="hint">לחצו כשאתם מול השער. הוא נפתח תוך כמה שניות.<br>הקישור אישי: אחרי הפתיחה הראשונה הוא עובד רק בטלפון הזה.</p>
   </section>
 
   <section class="panel where" aria-label="איפה חונים">
@@ -60,10 +60,17 @@
 const { hm, dateLabel, plateHTML } = PK, $ = (id) => document.getElementById(id);
 const q = new URLSearchParams(location.search), b = q.get("b"), t = q.get("t");
 const C = window.PARKING_CONFIG;
+// A random id kept on this phone. The link locks to the first phone that opens the gate.
+function deviceId() {
+  const k = "leos_gate_device";
+  try { let v = localStorage.getItem(k); if (!v) { v = crypto.randomUUID(); localStorage.setItem(k, v); } return v; }
+  catch { const m = document.cookie.match(/leos_gd=([\w-]+)/); if (m) return m[1]; const v = crypto.randomUUID(); document.cookie = `leos_gd=${v};max-age=31536000;path=/;samesite=lax;secure`; return v; }
+}
+const d = deviceId();
 async function call(action) {
   const r = await fetch(`${C.SUPABASE_URL}/functions/v1/parking-gate`, { method: "POST",
     headers: { "Content-Type": "application/json", apikey: C.SUPABASE_KEY, Authorization: `Bearer ${C.SUPABASE_KEY}` },
-    body: JSON.stringify({ action, b, t }) });
+    body: JSON.stringify({ action, b, t, d }) });
   return { http: r.status, ...(await r.json().catch(() => ({}))) };
 }
 let info = null;
@@ -83,6 +90,7 @@ function show(i) {
     early: ["עוד לא", `השער ייפתח מהשעה ${hm(i.from)}${i.day !== PK.israelNow().day ? ", " + dateLabel(i.day, true) : ""}.`],
     ended: ["ההזמנה הסתיימה", "זמן ההזמנה עבר."],
     limit: ["הגעתם למקסימום", "השער כבר נפתח כאן מספר הפעמים המותר. צריכים עוד? פנו למשרד."],
+    other_device: ["פעיל בטלפון אחר", "הקישור כבר הופעל בטלפון אחר, והוא עובד רק בטלפון שפתח איתו ראשון. אם החלפתם טלפון, פנו למי ששלח לכם את הקישור."],
     unavailable: ["לא זמין כרגע", "פתיחה מהקישור לא זמינה כרגע. פנו למשרד."],
   }[i.state];
   $("openSub").textContent = texts[0];
@@ -95,6 +103,8 @@ $("open").onclick = async () => {
     btn.classList.add("ok"); $("openSub").textContent = "נפתח ✓"; $("msg").textContent = "השער נפתח. סעו בזהירות וחנו מתחת לשלט.";
     if (navigator.vibrate) navigator.vibrate(80);
     setTimeout(() => { btn.classList.remove("ok"); show({ ...info, ...r, http: 200 }); }, 20000);
+  } else if (r.error === "WAIT") {
+    $("msg").textContent = `השער נפתח לפני רגע. אפשר לפתוח שוב בעוד ${r.wait} שניות.`; setTimeout(() => show(info), 1500);
   } else if (r.state && r.state !== "open") { show({ ...r, http: 200 }); }
   else { $("msg").textContent = "השער לא הגיב. נסו שוב בעוד רגע."; setTimeout(() => show(info), 1500); }
 };
