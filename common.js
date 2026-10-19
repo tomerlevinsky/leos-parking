@@ -189,6 +189,12 @@
   // Sign-in for staff and admin: one-time link by email (Supabase Auth).
   async function authGate(root, { need, onReady }) {
     if (DEMO) return onReady(await rpc("parking_me"));
+    // Google returns here with an error when the account isn't from leos.co.il / pers.co.il (blocked at sign-up).
+    const ret = new URLSearchParams(location.hash.slice(1) + "&" + location.search.slice(1));
+    if (ret.get("error")) {
+      history.replaceState(null, "", location.pathname);
+      return showMsg(root, "אפשר להיכנס רק עם חשבון העבודה של לאוס מדיה (‎@leos.co.il‏) או של פרספקטיב (‎@pers.co.il‏). נסו שוב ובחרו את החשבון הנכון.", false, true);
+    }
     const { data: { session } } = await sb.auth.getSession();
     if (!session) return showLogin(root);
     let me;
@@ -225,9 +231,10 @@
       document.getElementById("lNote").textContent = error ? "השליחה נכשלה. נסו שוב בעוד דקה." : `שלחנו קישור ל־${email}. פתחו את המייל בטלפון הזה ולחצו עליו.`;
     };
   }
-  function showMsg(root, html, withLogout) {
-    root.innerHTML = `<div class="center"><div class="panel warn-card"><h2>אין גישה</h2><p style="margin:0">${html}</p>${withLogout ? '<button class="ghost" id="lo">התנתקות</button>' : ""}</div></div>`;
+  function showMsg(root, html, withLogout, withRetry) {
+    root.innerHTML = `<div class="center"><div class="panel warn-card"><h2>אין גישה</h2><p style="margin:0">${html}</p>${withLogout ? '<button class="ghost" id="lo">התנתקות</button>' : ""}${withRetry ? '<button class="primary" id="rt" style="margin-top:12px">חזרה לכניסה</button>' : ""}</div></div>`;
     const lo = document.getElementById("lo"); if (lo) lo.onclick = logout;
+    const rt = document.getElementById("rt"); if (rt) rt.onclick = () => showLogin(root);
   }
   async function logout() { if (DEMO) return toast("בתצוגה המקדימה אין התנתקות"); await sb.auth.signOut(); location.replace(location.pathname); }
 
