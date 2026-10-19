@@ -201,7 +201,7 @@
   function showLogin(root) {
     root.innerHTML = `<div class="center"><header class="top"><div class="brand"><div class="mark" aria-hidden="true">P</div><div><span class="eyebrow">לאוס מדיה ואינטראקטיב</span><h1>${esc(document.title.replace("חניון אורחים · ", "חניון אורחים – "))}</h1><p class="sub">כניסה עם המייל של העבודה</p></div></div></header>
       <section class="panel"><button class="primary" type="button" id="gBtn">כניסה עם חשבון Google של המשרד</button>
-      <p class="note">בוחרים את חשבון ‎@leos.co.il‏ ונכנסים. רק מי שברשימת העובדים מקבל גישה.</p></section>
+      <p class="note">בוחרים את חשבון העבודה, ‎@leos.co.il‏ או ‎@pers.co.il‏, ונכנסים.</p></section>
       <details class="panel"><summary class="note" style="cursor:pointer">אין גישה ל־Google? כניסה עם קישור במייל</summary>
       <form id="loginForm" class="stack" novalidate style="margin-top:12px"><div class="field"><label for="lEmail">מייל</label><input id="lEmail" class="ltr" type="email" autocomplete="email" inputmode="email" placeholder="name@leos.co.il" required></div>
       <button class="ghost" type="submit" id="lBtn" style="padding:12px">שליחת קישור כניסה</button><p class="note" id="lNote">נשלח אליך מייל עם קישור. לוחצים עליו ונכנסים, בלי סיסמה.</p></form></details></div>`;
@@ -210,7 +210,7 @@
       const b = document.getElementById("gBtn"); b.disabled = true; b.textContent = "מעביר ל־Google…";
       const { error } = await sb.auth.signInWithOAuth({ provider: "google", options: {
         redirectTo: location.origin + location.pathname,
-        queryParams: { hd: C.GOOGLE_DOMAIN || "leos.co.il", prompt: "select_account" },
+        queryParams: { prompt: "select_account" },
       } });
       if (error) { b.disabled = false; b.textContent = "כניסה עם חשבון Google של המשרד"; toast("הכניסה עם Google לא זמינה כרגע. נסו קישור במייל."); }
     };
