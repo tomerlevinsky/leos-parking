@@ -34,7 +34,7 @@
       <div class="mark" aria-hidden="true">P</div>
       <div><span class="eyebrow">לאוס מדיה · צוות</span><h1>חניון אורחים</h1><p class="sub">שמירת חניה ללקוחות המשרד</p></div>
     </div>
-    <div class="who"><b id="meName"></b><button type="button" class="ghost" id="logout">התנתקות</button></div>
+    <div class="who"><b id="meName"></b><a class="ghost" id="adminLink" href="admin.html" hidden style="text-decoration:none">ניהול</a><button type="button" class="ghost" id="logout">התנתקות</button></div>
   </header>
 
   <section class="panel where" aria-label="מה להגיד ללקוח">
@@ -189,6 +189,7 @@ PK.authGate($("root"), { need: "staff", onReady: async (m) => {
   me = m;
   $("root").innerHTML = ""; $("root").appendChild($("tpl").content.cloneNode(true));
   $("meName").textContent = m.name || m.email;
+  if (m.role === "admin") $("adminLink").hidden = false;
   wire();
   try { await load(); } catch (x) { toast(err(x)); }
   setInterval(() => load().catch(() => {}), 60000);
