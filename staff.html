@@ -9,7 +9,11 @@
 <link rel="icon" href="/favicon.ico" sizes="any">
 <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png">
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
-<link rel="manifest" href="/site.webmanifest">
+<link rel="manifest" href="/staff.webmanifest">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="חניה ללקוחות">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta property="og:type" content="website">
 <meta property="og:locale" content="he_IL">
 <meta property="og:site_name" content="לאוס מדיה ואינטראקטיב">
@@ -36,6 +40,8 @@
     </div>
     <div class="who"><b id="meName"></b><a class="ghost" id="adminLink" href="admin.html" hidden style="text-decoration:none">ניהול</a><button type="button" class="ghost" id="logout">התנתקות</button></div>
   </header>
+
+  <section class="panel" id="pushBox" hidden style="background:var(--accent-soft);border-color:var(--accent)"></section>
 
   <section class="panel where" aria-label="מה להגיד ללקוח">
     <div class="sign sm" aria-hidden="true"><img src="logo-black.png" alt="LEOS Media &amp; Interactive"><span class="guest">אורחים</span></div>
@@ -185,12 +191,86 @@ function wire() {
   });
 }
 
+// ---------- app + "your client arrived" notifications ----------
+const VAPID_PUBLIC = "BNsBEJ1VHwRcqeBOK7cc3s_yDUjgvrkoQwBCk6hSF0VmGSUljPJ4jQAB_9NsMQt2DPa0BHScBYHV7VTeB7Zv7FE";
+const UA = navigator.userAgent;
+const PUSH = {
+  ios: /iPhone|iPad|iPod/.test(UA) || (/Macintosh/.test(UA) && navigator.maxTouchPoints > 1),
+  standalone: (window.matchMedia && matchMedia("(display-mode: standalone)").matches) || navigator.standalone === true,
+  supported: "serviceWorker" in navigator && "PushManager" in window && "Notification" in window,
+  on: false, busy: false,
+};
+let installPrompt = null;
+const lsGet = (k) => { try { return localStorage.getItem(k); } catch { return null; } };
+const lsSet = (k, v) => { try { v == null ? localStorage.removeItem(k) : localStorage.setItem(k, v); } catch {} };
+const perm = () => ("Notification" in window ? Notification.permission : "unsupported");
+const later = () => { const t = Number(lsGet("leos_push_later") || 0); return t && Date.now() < t; };
+const b64ToBytes = (s) => { s = s.replace(/-/g, "+").replace(/_/g, "/"); const r = atob(s + "===".slice((s.length + 3) % 4)); return Uint8Array.from(r, (c) => c.charCodeAt(0)); };
+window.addEventListener("beforeinstallprompt", (e) => { e.preventDefault(); installPrompt = e; renderPush(); });
+
+async function swReady() {
+  if (!("serviceWorker" in navigator)) return null;
+  try { await navigator.serviceWorker.register("/staff-sw.js", { scope: "/staff" }); } catch { return null; }
+  return navigator.serviceWorker.ready;
+}
+async function syncPush() {
+  if (!PUSH.supported || PK.DEMO) return;
+  try {
+    const reg = await swReady(); if (!reg) return;
+    const sub = await reg.pushManager.getSubscription();
+    PUSH.on = !!sub && perm() === "granted";
+    if (PUSH.on) { const j = sub.toJSON(); rpc("parking_push_subscribe", { p_endpoint: j.endpoint, p_p256dh: j.keys.p256dh, p_auth: j.keys.auth }).catch(() => {}); }
+  } catch {}
+}
+async function enablePush() {
+  if (PUSH.busy) return; PUSH.busy = true;
+  try {
+    const p = await Notification.requestPermission();
+    if (p !== "granted") { toast(p === "denied" ? "ההתראות נחסמו. אפשר לאשר אותן בהגדרות הטלפון" : "לא אושרו התראות"); return; }
+    const reg = await swReady();
+    let sub = await reg.pushManager.getSubscription();
+    if (!sub) sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: b64ToBytes(VAPID_PUBLIC) });
+    const j = sub.toJSON();
+    await rpc("parking_push_subscribe", { p_endpoint: j.endpoint, p_p256dh: j.keys.p256dh, p_auth: j.keys.auth });
+    PUSH.on = true; toast("מעולה! כשלקוח שלך יפתח את השער, תקבל/י התראה");
+  } catch { toast("לא הצלחתי להפעיל התראות. נסו שוב בעוד רגע"); }
+  finally { PUSH.busy = false; renderPush(); }
+}
+async function disablePush() {
+  try { const reg = await navigator.serviceWorker.ready; const sub = await reg.pushManager.getSubscription();
+    if (sub) { await rpc("parking_push_unsubscribe", { p_endpoint: sub.endpoint }).catch(() => {}); await sub.unsubscribe(); } } catch {}
+  PUSH.on = false; toast("ההתראות כובו בטלפון הזה"); renderPush();
+}
+function renderPush() {
+  const box = $("pushBox"); if (!box || PK.DEMO) return;
+  const notNow = '<button type="button" class="ghost" data-push="later">לא עכשיו</button>';
+  let h = "";
+  if (PUSH.on) h = `<p class="note" style="color:inherit">🔔 התראות פועלות בטלפון הזה: כשלקוח שלך פותח את השער, תקבל/י הודעה.</p><div style="display:flex;gap:8px;flex-wrap:wrap"><button type="button" class="ghost" data-push="test">שליחת התראת בדיקה</button><button type="button" class="ghost" data-push="off">כיבוי</button></div>`;
+  else if (later()) h = "";
+  else if (PUSH.ios && !PUSH.standalone) h = `<h2 style="margin:0">🔔 לדעת מתי הלקוח שלך הגיע</h2><p style="margin:0">כשהלקוח פותח את שער החניון, נשלח לך התראה לטלפון. באייפון מוסיפים קודם את העמוד למסך הבית:</p>
+    <ol style="margin:0;padding-inline-start:22px;display:grid;gap:4px"><li>לוחצים על כפתור השיתוף <b>⬆︎</b> בדפדפן</li><li>בוחרים <b>"הוספה למסך הבית"</b></li><li>פותחים את <b>חניה ללקוחות</b> מהאייקון, נכנסים עם Google ומפעילים התראות</li></ol><div>${notNow}</div>`;
+  else if (PUSH.supported && perm() !== "denied") h = `<h2 style="margin:0">🔔 לדעת מתי הלקוח שלך הגיע</h2><p style="margin:0">כשהלקוח פותח את שער החניון מהקישור, נשלח לך התראה לטלפון.</p>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center"><button type="button" class="primary" data-push="on" style="min-height:40px;padding:8px 16px">הפעלת התראות</button>${installPrompt && !PUSH.standalone ? '<button type="button" class="ghost" data-push="install">התקנה כאפליקציה</button>' : ""}${notNow}</div>`;
+  else if (perm() === "denied") h = `<p class="note" style="color:inherit">ההתראות חסומות בטלפון הזה. כדי לדעת מתי לקוח מגיע, מאשרים התראות עבור parking.leos.co.il בהגדרות הדפדפן.</p><div>${notNow}</div>`;
+  box.innerHTML = h; box.hidden = !h;
+}
+document.addEventListener("click", async (e) => {
+  const b = e.target.closest("[data-push]"); if (!b) return;
+  const a = b.dataset.push;
+  if (a === "on") enablePush();
+  else if (a === "off") disablePush();
+  else if (a === "later") { lsSet("leos_push_later", String(Date.now() + 7 * 864e5)); renderPush(); }
+  else if (a === "install" && installPrompt) { installPrompt.prompt(); try { await installPrompt.userChoice; } catch {} installPrompt = null; renderPush(); }
+  else if (a === "test") { try { const r = await PK.fn("parking-push", { action: "test" }); toast(r.sent ? "נשלחה התראת בדיקה" : "לא נמצא טלפון רשום. נסו לכבות ולהפעיל שוב"); } catch { toast("השליחה נכשלה, נסו שוב"); } }
+});
+
 PK.authGate($("root"), { need: "staff", onReady: async (m) => {
   me = m;
   $("root").innerHTML = ""; $("root").appendChild($("tpl").content.cloneNode(true));
   $("meName").textContent = m.name || m.email;
   if (m.role === "admin") $("adminLink").hidden = false;
   wire();
+  renderPush(); syncPush().then(renderPush);
   try { await load(); } catch (x) { toast(err(x)); }
   setInterval(() => load().catch(() => {}), 60000);
 }});
