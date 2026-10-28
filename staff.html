@@ -45,8 +45,9 @@
 
   <section class="panel where" aria-label="מה להגיד ללקוח">
     <div class="sign sm" aria-hidden="true"><img src="logo-black.png" alt="LEOS Media &amp; Interactive"><span class="guest">אורחים</span></div>
-    <div><h2>להגיד ללקוח: לחנות מתחת לשלט "לאוס מדיה · אורחים"</h2>
-      <p>בחניון יש הרבה חניות. אחרי השמירה אפשר להעתיק ללקוח הודעה מוכנה עם השעה, מספר הרכב <b>וקישור לפתיחת שער החניון מהטלפון</b>. הקישור עובד רק ביום ההגעה ובזמן ההזמנה.</p></div>
+    <div><h2>שמרת חניה? חובה לשלוח ללקוח את הקישור לשער</h2>
+      <p>שער החניון <b>נפתח ללקוח רק מהקישור האישי שלו</b>. אחרי השמירה תופיע הודעה מוכנה עם השעה, מספר הרכב, הקישור לשער ואיפה לחנות (מתחת לשלט "לאוס מדיה · אורחים"). שולחים אותה בוואטסאפ בלחיצה אחת.</p>
+      <p class="note" style="margin-top:6px">בלי הקישור הלקוח נתקע מול השער, וגם לא תקבל/י התראה כשהוא מגיע.</p></div>
   </section>
 
   <section class="now" id="now"></section>
@@ -80,6 +81,8 @@
       </div>
     </form>
   </section>
+
+  <section class="panel" id="sendPanel" hidden style="border:2px solid var(--ok);background:var(--ok-soft)" aria-live="polite"></section>
 
   <section class="panel">
     <div class="panel-head"><h2>ביום הנבחר</h2><p id="dayLbl"></p></div>
@@ -134,15 +137,52 @@ function render() {
   const mine = bookings.filter((b) => b.by === me.email && b.kind === "client");
   $("mine").innerHTML = mine.length ? mine.map((b) => row(b, true)).join("") : '<p class="empty">עוד לא שמרת חניה ללקוח. בחרו יום ושעה בלוח.</p>';
 }
+const gateLink = (b) => `${location.origin}/gate.html?b=${b.id}&t=${b.gate}`;
+function clientMsg(b) {
+  if (b.kind !== "client") return "";
+  const first = b.driver ? " " + String(b.driver).trim().split(/\s+/)[0] : "";
+  return `היי${first}, שמרנו לך חניה אצלנו בלאוס מדיה 🚗
+📅 ${dateLabel(b.day, true)}, ${hm(b.start)}–${hm(b.end)}
+🚘 רכב ${PK.fmtPlate(b.plate)}` +
+  (b.gate ? `
+
+🔑 שער החניון נפתח רק מהקישור הזה. כשמגיעים מול השער, פותחים את הקישור ולוחצים "פתיחת שער":
+${gateLink(b)}
+(הקישור עובד רק בזמן ההזמנה ורק בטלפון שלך, לא להעביר הלאה)` : "") + `
+
+🅿️ בחניון יש הרבה חניות: חונים רק מתחת לשלט "לאוס מדיה · אורחים".
+
+נתראה!`;
+}
+const waLink = (b) => { const ph = String(b.phone || "").replace(/\D/g, "").replace(/^0/, "972"); return `https://wa.me/${ph.length >= 11 ? ph : ""}?text=${encodeURIComponent(clientMsg(b))}`; };
+const wasSent = (id) => { try { return localStorage.getItem("leos_sent_" + id) === "1"; } catch { return false; } };
+const markSent = (id) => { try { localStorage.setItem("leos_sent_" + id, "1"); } catch {} };
+function showSendPanel(b) {
+  const el = $("sendPanel"); if (!el) return;
+  if (!b) { el.hidden = true; el.innerHTML = ""; return; }
+  el.innerHTML = `<h2 style="margin:0">✅ החניה נשמרה ל${esc(b.client)}. עכשיו הצעד הכי חשוב:</h2>
+    <p style="margin:0"><b>לשלוח ללקוח את ההודעה עם הקישור לשער.</b> בלי הקישור הלקוח לא יוכל לפתוח את שער החניון, ולא תקבל/י התראה כשהוא מגיע.</p>
+    <pre style="white-space:pre-wrap;margin:0;font:inherit;font-size:14px;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:10px 12px;max-height:220px;overflow:auto">${esc(clientMsg(b))}</pre>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+      <a class="primary" href="${esc(waLink(b))}" target="_blank" rel="noopener" data-sent="${b.id}" style="min-height:44px">שליחה בוואטסאפ${b.phone ? " ל" + esc(b.driver || b.client) : ""}</a>
+      <button type="button" class="ghost" data-msg="${esc(clientMsg(b))}" data-sentid="${b.id}" style="padding:10px 14px">העתקת ההודעה</button>
+      <button type="button" class="ghost" data-closesend="1" style="padding:10px 14px">שלחתי, לסגור</button>
+    </div>`;
+  el.hidden = false;
+  el.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
 function row(b, withDate) {
   const who = b.kind === "client" ? `לקוח: ${esc(b.client)}${b.driver && b.driver !== b.client ? ` <span class="sm">· נהג/ת: ${esc(b.driver)}</span>` : ""}<br><span class="sm">שמר/ה: <b>${esc(bookerName(b.by))}</b></span>` : `שכן: ${esc(b.driver)}`;
   const pill = b.kind === "client" ? '<span class="pill p-client">לקוח</span>' : b.status === "pending" ? '<span class="pill p-warn">ממתין לתשלום</span>' : '<span class="pill p-rent">שכן · שולם</span>';
   const phone = b.phone ? `<div class="phone"><code>${esc(fmtPhone(b.phone))}</code><a href="tel:${esc(b.phone)}">חיוג</a></div>` : "";
-  const msg = b.kind === "client" ? `היי, שמרנו לך חניה בבניין של לאוס מדיה, ${dateLabel(b.day, true)} בין ${hm(b.start)} ל־${hm(b.end)}, לרכב ${PK.fmtPlate(b.plate)}. בחניון יש הרבה חניות: חנה רק באחת משתי החניות שמעליהן השלט "לאוס מדיה · אורחים".${b.gate ? `\n\nאת שער החניון פותחים מהקישור הזה (עובד רק בזמן ההזמנה ורק בטלפון שלך, לא להעביר הלאה): ${location.origin}/gate.html?b=${b.id}&t=${b.gate}` : ""}\n\nנתראה!` : "";
+  const msg = clientMsg(b);
+  const mineClient = b.kind === "client" && b.by === me.email && b.gate;
+  const sentPill = !mineClient || b.opens ? "" : wasSent(b.id) ? '<span class="pill p-free">✓ נשלח ללקוח</span>' : '<span class="pill p-warn">⚠ הקישור עוד לא נשלח ללקוח</span>';
   const canCancel = b.kind === "client" && b.by === me.email;
   const act = !canCancel ? "" : armed === b.id ? `<button type="button" class="ghost danger" data-yes="${b.id}">כן, לבטל</button>` : `<button type="button" class="ghost" data-cancel="${b.id}">ביטול</button>`;
   return `<div class="row"><div class="t">${hm(b.start)}–${hm(b.end)}<small>${withDate ? esc(dateLabel(b.day)) : "חניית אורחים"}</small></div>
-    <div class="m"><span>${who}</span><div class="line">${plateHTML(b.plate)}${pill}${b.opens ? `<span class="pill p-free">השער נפתח ${b.opens}×</span>` : ""}</div>${phone}</div><div class="acts">${msg ? `<button type="button" class="ghost" data-msg="${esc(msg)}">הודעה ללקוח</button>` : ""}${b.bound ? `<button type="button" class="ghost" data-reset="${b.id}">פתיחה מטלפון אחר</button>` : ""}${b.gate ? `<button type="button" class="ghost" data-copy="${esc(`${location.origin}/gate.html?b=${b.id}&t=${b.gate}`)}">קישור לשער</button>` : ""}${act}</div></div>`;
+    <div class="m"><span>${who}</span><div class="line">${plateHTML(b.plate)}${pill}${b.opens ? `<span class="pill p-free">השער נפתח ${b.opens}×</span>` : ""}${sentPill}</div>${phone}</div><div class="acts">${mineClient ? `<a class="ghost" href="${esc(waLink(b))}" target="_blank" rel="noopener" data-sent="${b.id}" style="text-decoration:none${wasSent(b.id) || b.opens ? "" : ";border-color:var(--accent);color:var(--accent);font-weight:600"}">שליחה בוואטסאפ</a>` : ""}${msg ? `<button type="button" class="ghost" data-msg="${esc(msg)}" data-sentid="${b.id}">העתקת הודעה ללקוח</button>` : ""}${b.bound ? `<button type="button" class="ghost" data-reset="${b.id}">פתיחה מטלפון אחר</button>` : ""}${b.gate ? `<button type="button" class="ghost" data-copy="${esc(`${location.origin}/gate.html?b=${b.id}&t=${b.gate}`)}">קישור לשער</button>` : ""}${act}</div></div>`;
 }
 function fillDur() {
   PK.fillDur($("fDur"), { cfg, start: Number($("fStart").value), minLen: cfg.client_min_minutes, step: 30 });
@@ -176,16 +216,21 @@ function wire() {
     try {
       const s = Number($("fStart").value), e = s + Number($("fDur").value);
       const r = await rpc("parking_create_client", { p_day: selDate, p_spot: Number($("fSpot").value) || null, p_start: s, p_end: e, p_plate: plate, p_driver: $("fDriver").value, p_phone: phone, p_client: client });
-      toast(`החניה נשמרה ל${client}. ההודעה ללקוח, כולל קישור לפתיחת השער, מחכה ברשימה "ההזמנות שלי"`);
       $("fClient").value = ""; $("fPlate").value = ""; $("fDriver").value = ""; $("fPhone").value = "";
+      const day = selDate;
+      await load().catch(() => {});
+      const nb = bookings.filter((b) => b.kind === "client" && b.by === me.email && b.day === day && b.start === s && b.client === client).pop();
+      if (nb) showSendPanel(nb); else toast(`החניה נשמרה ל${client}. שלחו ללקוח את ההודעה עם הקישור לשער מהרשימה "ההזמנות שלי"`);
     } catch (x) { fail(err(x)); }
     finally { btn.textContent = "שמירת חניה ללקוח"; await load().catch(() => {}); }
   });
+  document.addEventListener("click", (e) => { const a = e.target.closest("a[data-sent]"); if (a) { markSent(a.dataset.sent); setTimeout(render, 300); } });
   document.addEventListener("click", async (e) => {
     const t = e.target.closest("button"); if (!t) return;
     if (t.dataset.reset) { try { await PK.fn("parking-gate", { action: "reset-device", b: t.dataset.reset }); toast("עכשיו אפשר לפתוח את השער מהקישור בטלפון אחר"); } catch { toast("לא הצלחתי, נסו שוב"); } await load().catch(() => {}); return; }
     if (t.dataset.copy) { try { await navigator.clipboard.writeText(t.dataset.copy); toast("הקישור לשער הועתק"); } catch { toast(t.dataset.copy); } return; }
-    if (t.dataset.msg) { try { await navigator.clipboard.writeText(t.dataset.msg); toast("ההודעה הועתקה. אפשר להדביק בוואטסאפ"); } catch { toast(t.dataset.msg); } return; }
+    if (t.dataset.msg) { try { await navigator.clipboard.writeText(t.dataset.msg); toast("ההודעה הועתקה. הדביקו אותה בוואטסאפ ללקוח"); } catch { toast(t.dataset.msg); } if (t.dataset.sentid) { markSent(t.dataset.sentid); render(); } return; }
+    if (t.dataset.closesend) { showSendPanel(null); return; }
     if (t.dataset.cancel) { armed = t.dataset.cancel; render(); return; }
     if (t.dataset.yes) { try { await rpc("parking_cancel", { p_id: t.dataset.yes }); armed = null; toast("ההזמנה בוטלה"); await load(); } catch (x) { toast(err(x)); } }
   });
