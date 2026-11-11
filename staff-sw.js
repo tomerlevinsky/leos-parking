@@ -14,7 +14,10 @@ self.addEventListener("notificationclick", (e) => {
   e.notification.close();
   const url = (e.notification.data && e.notification.data.url) || "/staff.html";
   e.waitUntil(self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((list) => {
-    for (const c of list) if (new URL(c.url).pathname.startsWith("/staff") && "focus" in c) return c.focus();
+    for (const c of list) if (new URL(c.url).pathname.startsWith("/staff") && "focus" in c) {
+      if (url !== "/staff.html" && "navigate" in c) return c.navigate(url).then((w) => (w || c).focus()).catch(() => c.focus());
+      return c.focus();
+    }
     return self.clients.openWindow(url);
   }));
 });

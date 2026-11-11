@@ -138,10 +138,10 @@ function render() {
   $("mine").innerHTML = mine.length ? mine.map((b) => row(b, true)).join("") : '<p class="empty">עוד לא שמרת חניה ללקוח. בחרו יום ושעה בלוח.</p>';
 }
 const gateLink = (b) => `${location.origin}/gate.html?b=${b.id}&t=${b.gate}`;
-function clientMsg(b) {
+function clientMsg(b, remind) {
   if (b.kind !== "client") return "";
   const first = b.driver ? " " + String(b.driver).trim().split(/\s+/)[0] : "";
-  return `היי${first}, שמרנו לך חניה אצלנו בלאוס מדיה 🚗
+  return (remind ? `היי${first}, תזכורת: מחכה לך חניה אצלנו בלאוס מדיה היום ב-${hm(b.start)} 🚗` : `היי${first}, שמרנו לך חניה אצלנו בלאוס מדיה 🚗`) + `
 📅 ${dateLabel(b.day, true)}, ${hm(b.start)}–${hm(b.end)}
 🚘 רכב ${PK.fmtPlate(b.plate)}` +
   (b.gate ? `
@@ -154,18 +154,21 @@ ${gateLink(b)}
 
 נתראה!`;
 }
-const waLink = (b) => { const ph = String(b.phone || "").replace(/\D/g, "").replace(/^0/, "972"); return `https://wa.me/${ph.length >= 11 ? ph : ""}?text=${encodeURIComponent(clientMsg(b))}`; };
+const waLink = (b, remind) => { const ph = String(b.phone || "").replace(/\D/g, "").replace(/^0/, "972"); return `https://wa.me/${ph.length >= 11 ? ph : ""}?text=${encodeURIComponent(clientMsg(b, remind))}`; };
 const wasSent = (id) => { try { return localStorage.getItem("leos_sent_" + id) === "1"; } catch { return false; } };
 const markSent = (id) => { try { localStorage.setItem("leos_sent_" + id, "1"); } catch {} };
-function showSendPanel(b) {
+function showSendPanel(b, remind) {
   const el = $("sendPanel"); if (!el) return;
   if (!b) { el.hidden = true; el.innerHTML = ""; return; }
-  el.innerHTML = `<h2 style="margin:0">✅ החניה נשמרה ל${esc(b.client)}. עכשיו הצעד הכי חשוב:</h2>
-    <p style="margin:0"><b>לשלוח ללקוח את ההודעה עם הקישור לשער.</b> בלי הקישור הלקוח לא יוכל לפתוח את שער החניון, ולא תקבל/י התראה כשהוא מגיע.</p>
-    <pre style="white-space:pre-wrap;margin:0;font:inherit;font-size:14px;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:10px 12px;max-height:220px;overflow:auto">${esc(clientMsg(b))}</pre>
+  el.innerHTML = (remind
+    ? `<h2 style="margin:0">⏰ ${esc(b.client)} מגיע/ה היום ב-${hm(b.start)}. שולחים תזכורת עם הקישור:</h2>
+    <p style="margin:0">לחיצה אחת שולחת ל${esc(b.driver || b.client)} תזכורת בוואטסאפ עם הקישור לשער, כדי שיפתח את השער לבד ותקבל/י התראה כשהוא מגיע.</p>`
+    : `<h2 style="margin:0">✅ החניה נשמרה ל${esc(b.client)}. עכשיו הצעד הכי חשוב:</h2>
+    <p style="margin:0"><b>לשלוח ללקוח את ההודעה עם הקישור לשער.</b> בלי הקישור הלקוח לא יוכל לפתוח את שער החניון, ולא תקבל/י התראה כשהוא מגיע.</p>`) + `
+    <pre style="white-space:pre-wrap;margin:0;font:inherit;font-size:14px;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:10px 12px;max-height:220px;overflow:auto">${esc(clientMsg(b, remind))}</pre>
     <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
-      <a class="primary" href="${esc(waLink(b))}" target="_blank" rel="noopener" data-sent="${b.id}" style="min-height:44px">שליחה בוואטסאפ${b.phone ? " ל" + esc(b.driver || b.client) : ""}</a>
-      <button type="button" class="ghost" data-msg="${esc(clientMsg(b))}" data-sentid="${b.id}" style="padding:10px 14px">העתקת ההודעה</button>
+      <a class="primary" href="${esc(waLink(b, remind))}" target="_blank" rel="noopener" data-sent="${b.id}" style="min-height:44px">${remind ? "שליחת תזכורת" : "שליחה"} בוואטסאפ${b.phone ? " ל" + esc(b.driver || b.client) : ""}</a>
+      <button type="button" class="ghost" data-msg="${esc(clientMsg(b, remind))}" data-sentid="${b.id}" style="padding:10px 14px">העתקת ההודעה</button>
       <button type="button" class="ghost" data-closesend="1" style="padding:10px 14px">שלחתי, לסגור</button>
     </div>`;
   el.hidden = false;
@@ -317,6 +320,13 @@ PK.authGate($("root"), { need: "staff", onReady: async (m) => {
   wire();
   renderPush(); syncPush().then(renderPush);
   try { await load(); } catch (x) { toast(err(x)); }
+  // opened from a "your client arrives soon" notification
+  const rid = new URLSearchParams(location.search).get("remind");
+  if (rid) {
+    const rb = bookings.find((b) => b.id === rid && b.kind === "client");
+    if (rb) showSendPanel(rb, true);
+    history.replaceState(null, "", location.pathname);
+  }
   setInterval(() => load().catch(() => {}), 60000);
 }});
 </script>
