@@ -110,7 +110,14 @@
   }
 
   // blocks: [{spot,start,end,cls,title,sub,extra}]
-  function renderBoard(el, { cfg, day, blocks, onEmpty }) {
+  // spots: [{spot,name,sign}] (default: the two guest spots); headEl: the column header row to keep in sync
+  function renderBoard(el, { cfg, day, blocks, onEmpty, spots, headEl }) {
+    const SP = spots && spots.length ? spots : [{ spot: 1 }, { spot: 2 }];
+    el.style.gridTemplateColumns = SP.length === 2 ? "" : `48px repeat(${SP.length},1fr)`;
+    if (headEl && spots) {
+      headEl.style.gridTemplateColumns = el.style.gridTemplateColumns;
+      headEl.innerHTML = "<div></div>" + SP.map((x) => `<div>${esc(x.name || "חניה " + x.spot)}${x.sign ? `<small>${esc(x.sign)}</small>` : ""}</div>`).join("");
+    }
     const H = parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--H")) || 48;
     const O = cfg.open_min, Cl = cfg.close_min, height = ((Cl - O) / 60) * H;
     const now = israelNow();
@@ -118,7 +125,7 @@
     for (let m = Math.ceil(O / 60) * 60; m < Cl; m += 60) if (m > O) hours += `<div class="num" style="top:${((m - O) / 60) * H}px">${hm(m)}</div>`;
     hours += "</div>";
     let lanes = "";
-    for (const sp of [1, 2]) {
+    for (const sp of SP.map((x) => x.spot)) {
       let inner = "";
       if (day === now.day && now.min > O) {
         const y = (Math.min(now.min, Cl) - O) / 60 * H;

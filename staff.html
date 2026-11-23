@@ -54,7 +54,7 @@
   <nav class="days" id="days" aria-label="בחירת יום"></nav>
 
   <section class="board" aria-label="לוח החניות">
-    <div class="bhead"><div></div><div>חניית אורחים<small>שלט לאוס מדיה אורחים</small></div><div>חניית אורחים<small>שלט לאוס מדיה אורחים</small></div></div>
+    <div class="bhead" id="bhead"><div></div><div>חניית אורחים<small>שלט לאוס מדיה אורחים</small></div><div>חניית אורחים<small>שלט לאוס מדיה אורחים</small></div></div>
     <div class="bbody" id="board"></div>
     <p class="legend"><span><i style="background:var(--accent-soft);border-color:var(--accent)"></i>לקוח</span><span><i style="background:var(--rent-soft);border-color:var(--rent)"></i>שכן משלם</span><span><i style="background:var(--closed-soft);border-color:var(--line)"></i>סגור</span><span>לחיצה על זמן פנוי פותחת הזמנה</span></p>
   </section>
@@ -101,16 +101,32 @@
 <script>
 const { hm, esc, plateHTML, toast, err, rpc, israelNow, addDays, dateLabel, fmtPhone } = PK;
 const $ = (id) => document.getElementById(id);
-let cfg, me, bookings = [], closures = [], selDate = israelNow().day, armed = null;
+let cfg, me, bookings = [], closures = [], spots = [], extraOpen = [], selDate = israelNow().day, armed = null;
 const DAYS = 21;
 
+// CEO spots (3,4) are closed except inside windows the admin opened
+const spotInfo = (n) => spots.find((x) => x.spot === n) || { spot: n, kind: n <= 2 ? "guest" : "exec", name: n <= 2 ? "חניית אורחים" : "חניית מנכ״ל", sign: "", park_note: "" };
+const daySpots = (day) => [1, 2].concat([3, 4].filter((n) => extraOpen.some((o) => o.day === day && o.spot === n))).map(spotInfo);
+function execClosedBlocks() {
+  const out = [];
+  for (const o of new Set(extraOpen.map((x) => x.day + "|" + x.spot))) {
+    const [day, sp] = o.split("|"); const spot = Number(sp);
+    const wins = extraOpen.filter((x) => x.day === day && x.spot === spot).sort((a, b) => a.start - b.start);
+    let t = 0;
+    for (const w of wins) { if (w.start > t) out.push({ day, spot, start: t, end: w.start }); t = Math.max(t, w.end); }
+    if (t < 1440) out.push({ day, spot, start: t, end: 1440 });
+  }
+  return out.map((c) => ({ ...c, kind: "closed", cls: "closed", reason: "לא פתוחה להזמנה", exec: true }));
+}
 function blocksAll() {
   return bookings.map((b) => ({ ...b, cls: b.kind + (b.status === "pending" ? " pending" : "") + (b.by === me.email ? " mine" : "") }))
-    .concat(closures.map((c) => ({ ...c, kind: "closed", cls: "closed" })));
+    .concat(closures.map((c) => ({ ...c, kind: "closed", cls: "closed" })))
+    .concat(execClosedBlocks());
 }
 async function load() {
   const d = await rpc("parking_staff_board", { p_from: israelNow().day, p_days: DAYS });
   cfg = d.config; bookings = d.bookings || []; closures = d.closures || []; staffNames = d.staff || {};
+  spots = d.spots || []; extraOpen = d.extra_open || [];
   render();
 }
 let staffNames = {};
@@ -122,11 +138,13 @@ function render() {
   PK.renderNow($("now"), { cfg, blocks: all, label: (b) => b.kind === "closed" ? '<span class="pill p-closed">סגור</span>' : b.kind === "client" ? '<span class="pill p-client">לקוח</span>' : '<span class="pill p-rent">שכן</span>' });
   const dayBlocks = all.filter((b) => b.day === selDate).map((b) => ({
     ...b,
-    title: b.kind === "closed" ? "סגור" + (b.reason ? " · " + esc(b.reason) : "") : b.kind === "client" ? "לקוח · " + esc(b.client) : "שכן · " + esc(b.driver),
+    title: b.exec ? "לא פתוחה" : b.kind === "closed" ? "סגור" + (b.reason ? " · " + esc(b.reason) : "") : b.kind === "client" ? "לקוח · " + esc(b.client) : "שכן · " + esc(b.driver),
     sub: b.status === "pending" ? "ממתין לתשלום" : b.kind === "client" ? "ע״י " + esc(bookerName(b.by)) : "",
     extra: b.plate ? plateHTML(b.plate) : "",
   }));
-  PK.renderBoard($("board"), { cfg, day: selDate, blocks: dayBlocks, onEmpty: (spot, min) => {
+  const ds = daySpots(selDate);
+  $("fSpot").innerHTML = '<option value="0">הראשונה שפנויה</option>' + ds.map((x) => `<option value="${x.spot}">${esc(x.name)}</option>`).join("");
+  PK.renderBoard($("board"), { cfg, day: selDate, blocks: dayBlocks, spots: ds, headEl: $("bhead"), onEmpty: (spot, min) => {
     $("fSpot").value = String(spot); PK.fillStart($("fStart"), { cfg, day: selDate, minLen: cfg.client_min_minutes, pref: min }); fillDur(); update();
     $("bookPanel").scrollIntoView({ behavior: "smooth", block: "start" });
   }});
@@ -136,6 +154,11 @@ function render() {
   $("dayList").innerHTML = list.length ? list.map((b) => row(b, false)).join("") : '<p class="empty">אין הזמנות ביום הזה.</p>';
   const mine = bookings.filter((b) => b.by === me.email && b.kind === "client");
   $("mine").innerHTML = mine.length ? mine.map((b) => row(b, true)).join("") : '<p class="empty">עוד לא שמרת חניה ללקוח. בחרו יום ושעה בלוח.</p>';
+}
+function parkLine(b) {
+  const sp = spotInfo(b.spot);
+  if (sp.kind !== "exec") return `🅿️ בחניון יש הרבה חניות: חונים רק מתחת לשלט "לאוס מדיה · אורחים".`;
+  return `🅿️ הפעם החניה שלך היא ${sp.name}${sp.sign ? ` (${sp.sign})` : ""}, ולא בחניות האורחים.` + (sp.park_note ? `\n${sp.park_note}` : "");
 }
 const gateLink = (b) => `${location.origin}/gate.html?b=${b.id}&t=${b.gate}`;
 function clientMsg(b, remind) {
@@ -150,7 +173,7 @@ function clientMsg(b, remind) {
 ${gateLink(b)}
 (הקישור עובד רק בזמן ההזמנה ורק בטלפון שלך, לא להעביר הלאה)` : "") + `
 
-🅿️ בחניון יש הרבה חניות: חונים רק מתחת לשלט "לאוס מדיה · אורחים".
+${parkLine(b)}
 
 נתראה!`;
 }
@@ -184,20 +207,20 @@ function row(b, withDate) {
   const sentPill = !mineClient || b.opens ? "" : wasSent(b.id) ? '<span class="pill p-free">✓ נשלח ללקוח</span>' : '<span class="pill p-warn">⚠ הקישור עוד לא נשלח ללקוח</span>';
   const canCancel = b.kind === "client" && b.by === me.email;
   const act = !canCancel ? "" : armed === b.id ? `<button type="button" class="ghost danger" data-yes="${b.id}">כן, לבטל</button>` : `<button type="button" class="ghost" data-cancel="${b.id}">ביטול</button>`;
-  return `<div class="row"><div class="t">${hm(b.start)}–${hm(b.end)}<small>${withDate ? esc(dateLabel(b.day)) : "חניית אורחים"}</small></div>
+  return `<div class="row"><div class="t">${hm(b.start)}–${hm(b.end)}<small>${withDate ? esc(dateLabel(b.day)) + (b.spot > 2 ? " · " + esc(spotInfo(b.spot).name) : "") : esc(spotInfo(b.spot).name)}</small></div>
     <div class="m"><span>${who}</span><div class="line">${plateHTML(b.plate)}${pill}${b.opens ? `<span class="pill p-free">השער נפתח ${b.opens}×</span>` : ""}${sentPill}</div>${phone}</div><div class="acts">${mineClient ? `<a class="ghost" href="${esc(waLink(b))}" target="_blank" rel="noopener" data-sent="${b.id}" style="text-decoration:none${wasSent(b.id) || b.opens ? "" : ";border-color:var(--accent);color:var(--accent);font-weight:600"}">שליחה בוואטסאפ</a>` : ""}${msg ? `<button type="button" class="ghost" data-msg="${esc(msg)}" data-sentid="${b.id}">העתקת הודעה ללקוח</button>` : ""}${b.bound ? `<button type="button" class="ghost" data-reset="${b.id}">פתיחה מטלפון אחר</button>` : ""}${b.gate ? `<button type="button" class="ghost" data-copy="${esc(`${location.origin}/gate.html?b=${b.id}&t=${b.gate}`)}">קישור לשער</button>` : ""}${act}</div></div>`;
 }
 function fillDur() {
   PK.fillDur($("fDur"), { cfg, start: Number($("fStart").value), minLen: cfg.client_min_minutes, step: 30 });
   $("durHint").textContent = `מינימום ${PK.fmtDur(cfg.client_min_minutes)} ללקוח, כדי שיהיה מרווח`;
 }
-function pickSpot(s, e) { const w = Number($("fSpot").value); return (w ? [w] : [1, 2]).find((sp) => PK.isFree(blocksAll(), selDate, sp, s, e)) || null; }
+function pickSpot(s, e) { const w = Number($("fSpot").value); return (w ? [w] : daySpots(selDate).map((x) => x.spot)).find((sp) => PK.isFree(blocksAll(), selDate, sp, s, e)) || null; }
 function update() {
   $("bookDate").textContent = dateLabel(selDate, true);
   const s = Number($("fStart").value), d = Number($("fDur").value); $("err").hidden = true;
   if (!d) { $("sumWhat").textContent = "אין זמן פנוי ביום הזה"; $("submit").disabled = true; return; }
   const sp = pickSpot(s, s + d);
-  $("sumWhat").textContent = `${sp ? "חניית אורחים פנויה" : "אין חניה פנויה"} · ${hm(s)}–${hm(s + d)}`;
+  $("sumWhat").textContent = `${sp ? spotInfo(sp).name + " פנויה" : "אין חניה פנויה"} · ${hm(s)}–${hm(s + d)}`;
   if (!sp) { $("err").textContent = "החניה תפוסה בחלק מהזמן הזה. נסו שעה אחרת או את החניה השנייה."; $("err").hidden = false; }
   $("submit").disabled = !sp;
 }

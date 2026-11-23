@@ -49,7 +49,7 @@
 
   <section class="panel where" aria-label="איפה חונים">
     <div class="sign" aria-hidden="true"><img src="logo-black.png" alt="LEOS Media &amp; Interactive"><span class="guest">אורחים</span></div>
-    <div><h2>חונים רק מתחת לשלט "לאוס מדיה · אורחים"</h2>
+    <div id="whereTxt"><h2>חונים רק מתחת לשלט "לאוס מדיה · אורחים"</h2>
       <p>בחניון יש הרבה חניות. רק <b>שתי החניות שמעליהן תלוי השלט הזה</b> שמורות לכם. חונים באחת מהן, זו שפנויה.</p></div>
   </section>
 </div>
@@ -67,6 +67,21 @@ function deviceId() {
   catch { const m = document.cookie.match(/leos_gd=([\w-]+)/); if (m) return m[1]; const v = crypto.randomUUID(); document.cookie = `leos_gd=${v};max-age=31536000;path=/;samesite=lax;secure`; return v; }
 }
 const d = deviceId();
+let execSpot = false;
+// When the booking is in a CEO spot (opened for the day), show that spot instead of the guest-sign instructions
+(async () => {
+  try {
+    const r = await fetch(`${C.SUPABASE_URL}/rest/v1/rpc/parking_booking_spot`, { method: "POST",
+      headers: { "Content-Type": "application/json", apikey: C.SUPABASE_KEY, Authorization: `Bearer ${C.SUPABASE_KEY}` }, body: JSON.stringify({ p_b: b, p_t: t }) });
+    const sp = r.ok ? await r.json() : null;
+    if (sp && sp.kind === "exec") {
+      execSpot = true;
+      const e = (x) => String(x || "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+      $("whereTxt").innerHTML = `<h2>הפעם החניה שלכם: ${e(sp.name)}</h2><p>${sp.sign ? `<b>${e(sp.sign)}</b>. ` : ""}${sp.park_note ? e(sp.park_note) : "זו לא אחת מחניות האורחים, אלא חניה שנפתחה במיוחד בשבילכם."}</p>`;
+      const sg = document.querySelector(".where .sign"); if (sg) sg.hidden = true;
+    }
+  } catch { /* keep the default guest instructions */ }
+})();
 async function call(action) {
   const r = await fetch(`${C.SUPABASE_URL}/functions/v1/parking-gate`, { method: "POST",
     headers: { "Content-Type": "application/json", apikey: C.SUPABASE_KEY, Authorization: `Bearer ${C.SUPABASE_KEY}` },
@@ -100,7 +115,7 @@ $("open").onclick = async () => {
   const btn = $("open"); btn.disabled = true; $("openSub").textContent = "פותח…"; $("msg").textContent = "";
   let r; try { r = await call("open"); } catch { r = {}; }
   if (r.ok) {
-    btn.classList.add("ok"); $("openSub").textContent = "נפתח ✓"; $("msg").textContent = "השער נפתח. סעו בזהירות וחנו מתחת לשלט.";
+    btn.classList.add("ok"); $("openSub").textContent = "נפתח ✓"; $("msg").textContent = execSpot ? "השער נפתח. סעו בזהירות וחנו בחניה שמופיעה למטה." : "השער נפתח. סעו בזהירות וחנו מתחת לשלט.";
     if (navigator.vibrate) navigator.vibrate(80);
     setTimeout(() => { btn.classList.remove("ok"); show({ ...info, ...r, http: 200 }); }, 20000);
   } else if (r.error === "WAIT") {
